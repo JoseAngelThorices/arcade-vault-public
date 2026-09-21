@@ -13,4 +13,14 @@ https://github.com/Klerith/fernando-skills
 
 ```bash
 npx skills@latest add Klerith/fernando-skills
-``` 
+```
+## Commands
+
+```bash
+npm run dev      # dev server (Turbopack, http://localhost:3000)
+npm run build    # production build (Turbopack)
+npm start        # serve the production build
+npm run lint     # ESLint flat config via the ESLint CLI
+npx tsc --noEmit # typecheck (no script alias exists)
+npx next typegen # regenerate route types after adding/renaming routes
+```
