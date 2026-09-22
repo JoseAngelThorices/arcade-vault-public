@@ -862,7 +862,12 @@
     box-shadow: 0 0 16px rgba(0,245,255,0.55), inset 0 0 8px rgba(255,0,110,0.5);
     border: 1px solid rgba(255,255,255,0.18);
   }
-  .auth-header h2 { margin: 4px 0 0; font-family: var(--pixel); font-size: 16px; letter-spacing: 0.1em; }
+  .auth-header h2 {
+    margin: 4px 0 0; font-family: var(--pixel); font-size: 16px; letter-spacing: 0.1em;
+    color: var(--cyan);
+    text-shadow: 0 0 6px rgba(0,245,255,0.65), 0 0 16px rgba(0,245,255,0.45);
+    transition: color 180ms, text-shadow 180ms;
+  }
   .auth-header .sub {
     margin-top: 6px;
     font-family: var(--mono);
@@ -879,16 +884,94 @@
     color: var(--ink-faint);
     letter-spacing: 0.1em;
   }
-  .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 18px 0; border: 1px solid var(--line); }
-  .auth-tabs button {
-    padding: 12px; font-family: var(--pixel); font-size: 9px; letter-spacing: 0.14em;
-    background: transparent; border: 0; color: var(--ink-dim); cursor: pointer;
+  /* ===== pestañas sin JavaScript =====
+     Dos radios ocultos mandan sobre sus hermanos con :checked, y la tarjeta
+     cambia de acento con :has(). El unico estado es el del navegador, asi que
+     esto funciona igual antes de que React hidrate. */
+  .auth-switch {
+    position: absolute;
+    width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+    clip-path: inset(50%); overflow: hidden; white-space: nowrap;
   }
-  .auth-tabs button.on { background: rgba(0,245,255,0.08); color: var(--cyan); text-shadow: 0 0 6px rgba(0,245,255,0.5); }
+  .auth-tabs {
+    position: relative;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 18px 0;
+    border: 1px solid var(--line);
+  }
+  /* Barra deslizante: el cambio de pestaña se ve aunque no se lea el texto. */
+  .auth-tabs::after {
+    content: ""; position: absolute; left: 0; bottom: -1px;
+    width: 50%; height: 2px;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan);
+    transition: transform 180ms ease-out, background-color 180ms, box-shadow 180ms;
+  }
+  .auth-tabs label {
+    padding: 12px; text-align: center;
+    font-family: var(--pixel); font-size: 9px; letter-spacing: 0.14em;
+    color: var(--ink-dim); cursor: pointer;
+    transition: background-color 180ms, color 180ms;
+  }
+  .auth-tabs label:hover { color: var(--ink); }
+
+  /* --- pestaña "iniciar sesion" activa --- */
+  #av-tab-in:checked ~ .auth-tabs label[for="av-tab-in"] {
+    background: rgba(0,245,255,0.08); color: var(--cyan); text-shadow: 0 0 6px rgba(0,245,255,0.5);
+  }
+  #av-tab-in:checked ~ .auth-panel.only-up,
+  #av-tab-in:checked ~ .auth-header .sub .only-up { display: none; }
+
+  /* --- pestaña "crear cuenta" activa --- */
+  #av-tab-up:checked ~ .auth-tabs::after {
+    transform: translateX(100%);
+    background: var(--magenta);
+    box-shadow: 0 0 10px var(--magenta);
+  }
+  #av-tab-up:checked ~ .auth-tabs label[for="av-tab-up"] {
+    background: rgba(255,0,110,0.08); color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.5);
+  }
+  #av-tab-up:checked ~ .auth-panel.only-in,
+  #av-tab-up:checked ~ .auth-header .sub .only-in { display: none; }
+
+  /* Foco de teclado: el radio esta oculto, asi que lo marca su label. */
+  .auth-switch:focus-visible ~ .auth-tabs label[for="av-tab-in"],
+  .auth-switch:focus-visible ~ .auth-tabs label[for="av-tab-up"] { outline: 2px solid var(--cyan); outline-offset: -4px; }
+  #av-tab-in:focus-visible ~ .auth-tabs label[for="av-tab-up"],
+  #av-tab-up:focus-visible ~ .auth-tabs label[for="av-tab-in"] { outline: 0; }
+
+  /* Registro: la tarjeta entera cambia de acento cian a magenta. */
+  .auth-card:has(#av-tab-up:checked) { border-color: rgba(255,0,110,0.3); box-shadow: 0 0 30px rgba(255,0,110,0.18); }
+  .auth-card:has(#av-tab-up:checked)::before { border-color: rgba(255,0,110,0.18); }
+  .auth-card:has(#av-tab-up:checked) .auth-header h2 {
+    color: var(--magenta);
+    text-shadow: 0 0 6px rgba(255,0,110,0.65), 0 0 16px rgba(255,0,110,0.45);
+  }
+  .auth-card:has(#av-tab-up:checked) .field input:focus {
+    border-color: var(--magenta);
+    box-shadow: 0 0 12px rgba(255,0,110,0.35);
+  }
+  .auth-panel { animation: slideIn 220ms ease-out; }
+  .field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .field-count { font-family: var(--pixel); font-size: 8px; color: var(--ink-faint); letter-spacing: 0.1em; }
+  .field-hint { margin: 0; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  /* minmax(0, 1fr) en vez de 1fr: si no, el ancho intrinseco del input (el
+     tamaño por defecto, ~20 caracteres) fija el minimo de la columna y la fila
+     se sale de la tarjeta. Los hijos necesitan min-width: 0 por lo mismo. */
+  .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+  .field-row > .field { min-width: 0; }
+  .auth-check {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-dim);
+    cursor: pointer;
+  }
+  .auth-check input { width: 16px; height: 16px; accent-color: var(--magenta); cursor: pointer; }
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
   .field label { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.16em; }
   .field input {
     height: 44px;
+    width: 100%;
+    min-width: 0;
     background: var(--bg);
     border: 1px solid var(--line);
     padding: 0 12px;
