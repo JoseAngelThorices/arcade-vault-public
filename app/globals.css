@@ -134,6 +134,15 @@
   /* ===== app frame ===== */
   .av-root { position: relative; z-index: 2; display: flex; flex-direction: column; min-height: 100%; }
   .av-main { flex: 1; }
+  .av-footer {
+    border-top: 1px solid var(--line);
+    padding: 20px 32px;
+    text-align: center;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+  }
 
   /* ===== pixel + neon text ===== */
   .pixel { font-family: var(--pixel); letter-spacing: 0.04em; line-height: 1.25; text-transform: uppercase; }
@@ -418,6 +427,20 @@
     text-shadow: 0 0 6px rgba(245,255,0,0.6);
   }
 
+  /* Busqueda o categoria sin resultados: ocupa la fila entera de la rejilla. */
+  .av-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px;
+    color: var(--ink-faint);
+  }
+  .av-empty .pixel {
+    font-size: 14px;
+    color: var(--magenta);
+    margin-bottom: 12px;
+  }
+  .av-empty .btn { margin-top: 24px; }
+
   /* ===== Cover art generators (pure CSS) ===== */
   .cover-bg { position: absolute; inset: 0; }
 
@@ -551,7 +574,7 @@
     border: 1px solid var(--line);
     overflow: hidden;
   }
-  .detail-info { display: flex; flex-direction: column; gap: 16px; }
+  .detail-info { display: flex; flex-direction: column; gap: 16px; margin-top: 20px; }
   .detail-info h2 {
     margin: 0;
     font-family: var(--pixel);
@@ -574,6 +597,8 @@
   .stat-strip > div { padding: 14px; background: var(--bg-2); }
   .stat-strip .l { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.12em; }
   .stat-strip .v { font-family: var(--pixel); font-size: 16px; color: var(--cyan); margin-top: 6px; text-shadow: 0 0 6px rgba(0,245,255,0.5); }
+  .stat-strip .v.magenta { color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.5); }
+  .stat-strip .v.yellow { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
   .detail-actions { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 
   .leaderboard {
@@ -602,6 +627,7 @@
   }
   .lb-row .rk { font-family: var(--pixel); font-size: 11px; color: var(--ink-faint); }
   .lb-row .pl { color: var(--ink); }
+  .lb-row .pl .date { font-size: 10px; color: var(--ink-faint); letter-spacing: 0.1em; }
   .lb-row .sc { text-align: right; font-family: var(--pixel); font-size: 12px; color: var(--cyan); }
   .lb-row.top1 .rk, .lb-row.top1 .sc { color: var(--gold); text-shadow: 0 0 6px rgba(255,207,58,0.6); }
   .lb-row.top2 .rk, .lb-row.top2 .sc { color: var(--silver); text-shadow: 0 0 6px rgba(199,208,224,0.5); }
@@ -621,7 +647,9 @@
     margin-bottom: 18px;
     flex-wrap: wrap;
   }
+  .hud-stats { display: flex; gap: 24px; flex-wrap: wrap; }
   .hud-stat { display: flex; flex-direction: column; gap: 4px; }
+  .hud-stat.player .v { color: var(--ink); text-shadow: none; }
   .hud-stat .l { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); letter-spacing: 0.14em; text-transform: uppercase; }
   .hud-stat .v { font-family: var(--pixel); font-size: 16px; color: var(--cyan); text-shadow: 0 0 6px rgba(0,245,255,0.5); }
   .hud-stat.lives .v { color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.5); }
@@ -674,6 +702,16 @@
     font-size: 12px;
     text-align: center;
   }
+  .crt-pause { background: rgba(0,0,0,0.6); z-index: 5; }
+  .crt-pause .pixel { font-size: 22px; }
+  .crt-pause .pause-hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-dim);
+    margin-top: 10px;
+    letter-spacing: 0.16em;
+  }
+
   .crt-bottom {
     display: flex; align-items: center; justify-content: space-between;
     margin-top: 14px;
@@ -825,6 +863,22 @@
     border: 1px solid rgba(255,255,255,0.18);
   }
   .auth-header h2 { margin: 4px 0 0; font-family: var(--pixel); font-size: 16px; letter-spacing: 0.1em; }
+  .auth-header .sub {
+    margin-top: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.16em;
+  }
+  .auth-submit { width: 100%; margin-top: 8px; }
+  .auth-guest { width: 100%; margin-top: 10px; }
+  .auth-terms {
+    margin-top: 18px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-faint);
+    letter-spacing: 0.1em;
+  }
   .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin: 18px 0; border: 1px solid var(--line); }
   .auth-tabs button {
     padding: 12px; font-family: var(--pixel); font-size: 9px; letter-spacing: 0.14em;
@@ -869,6 +923,8 @@
     filter: drop-shadow(0 0 14px rgba(245,255,0,0.4));
   }
   .hall-head p { color: var(--ink-dim); margin: 12px 0 0; letter-spacing: 0.1em; }
+  .hall-head p.pixel { font-size: 10px; }
+  .hall-back { text-align: center; margin-top: 32px; }
 
   .hall-tabs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-bottom: 22px; }
   .podium {
@@ -893,7 +949,14 @@
     font-family: var(--pixel); font-size: 28px;
     text-shadow: 0 0 12px currentColor;
   }
-  .podium-slot.gold .rank-num { color: var(--gold); }
+  .podium-slot .crown {
+    font-family: var(--pixel);
+    font-size: 9px;
+    color: var(--gold);
+    letter-spacing: 0.18em;
+  }
+  .podium-slot.gold .rank-num { color: var(--gold); font-size: 36px; margin-top: 4px; }
+  .podium-slot.gold .score { font-size: 20px; }
   .podium-slot.silver .rank-num { color: var(--silver); }
   .podium-slot.bronze .rank-num { color: var(--bronze); }
   .podium-slot .name { font-family: var(--pixel); font-size: 12px; margin-top: 8px; letter-spacing: 0.06em; }
@@ -927,6 +990,8 @@
   .hall-table .tr.top1 .rk, .hall-table .tr.top1 .sc { color: var(--gold); text-shadow: 0 0 6px rgba(255,207,58,0.6); }
   .hall-table .tr.top2 .rk, .hall-table .tr.top2 .sc { color: var(--silver); }
   .hall-table .tr.top3 .rk, .hall-table .tr.top3 .sc { color: var(--bronze); }
+  .hall-table .tr.you .rk, .hall-table .tr.you .pl { color: var(--yellow); }
+  .hall-table .tr.you .sc { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
   .hall-table .tr.you-label {
     display: grid; grid-template-columns: 1fr;
     padding: 8px 18px; font-family: var(--pixel); font-size: 9px;

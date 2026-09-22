@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Prototipo UMD sin build: sus componentes son globales cargados por orden
+    // de <script>, no imports, asi que ESLint los ve como no definidos.
+    "references/templates/**",
   ]),
 ]);
 

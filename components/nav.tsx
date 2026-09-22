@@ -1,0 +1,108 @@
+"use client";
+
+// Port de references/templates/nav.jsx. El estado activo sale de la ruta actual
+// en vez del objeto de ruta que el prototipo llevaba por props.
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useSession } from "@/lib/session";
+
+/** La biblioteca sigue marcada mientras se navega por un juego concreto. */
+function isLibrary(pathname: string) {
+  return pathname === "/" || pathname.startsWith("/juego") || pathname.startsWith("/jugar");
+}
+
+export default function Nav() {
+  const pathname = usePathname() || "";
+  const { user, ready, signOut } = useSession();
+  const [open, setOpen] = useState(false);
+
+  const libraryActive = isLibrary(pathname);
+  const hallActive = pathname === "/salon";
+  const accessActive = pathname === "/acceso";
+  const close = () => setOpen(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
+  // Hasta que localStorage esta leido se muestra el estado sin sesion, que es
+  // tambien lo que renderiza el servidor.
+  const signedIn = ready && user;
+
+  return (
+    <>
+      <nav className="av-nav">
+        <Link className="logo" href="/" aria-label="Arcade Vault, ir a la biblioteca">
+          <div className="logo-mark" aria-hidden="true" />
+          <div className="logo-text neon-cyan">
+            ARCADE <span className="neon-magenta">VAULT</span>
+          </div>
+        </Link>
+
+        <div className="links">
+          <Link className={libraryActive ? "active" : ""} href="/" aria-current={libraryActive ? "page" : undefined}>
+            Biblioteca
+          </Link>
+          <Link className={hallActive ? "active" : ""} href="/salon" aria-current={hallActive ? "page" : undefined}>
+            Salón de la Fama
+          </Link>
+        </div>
+
+        <div className="spacer" />
+
+        <div className="coin-counter">
+          <span className="coin" aria-hidden="true" />
+          <span>CRÉDITOS · 03</span>
+        </div>
+
+        {signedIn ? (
+          <button className="btn ghost auth-btn" onClick={signOut}>
+            {user.name} ▾
+          </button>
+        ) : (
+          <Link className="btn auth-btn" href="/acceso">
+            Iniciar Sesión
+          </Link>
+        )}
+
+        <button
+          className="btn ghost hamburger"
+          onClick={() => setOpen(true)}
+          aria-label="Abrir menú"
+          aria-expanded={open}
+          aria-controls="av-menu"
+        >
+          ≡
+        </button>
+      </nav>
+
+      <div className={"av-mobile-backdrop" + (open ? " open" : "")} onClick={close} aria-hidden="true" />
+
+      <aside id="av-menu" className={"av-mobile-panel" + (open ? " open" : "")} inert={!open}>
+        <div className="pixel neon-cyan" style={{ fontSize: 11, marginBottom: 16 }}>
+          MENÚ
+        </div>
+        <Link className={libraryActive ? "active" : ""} href="/" onClick={close}>
+          Biblioteca
+        </Link>
+        <Link className={hallActive ? "active" : ""} href="/salon" onClick={close}>
+          Salón de la Fama
+        </Link>
+        <Link className={accessActive ? "active" : ""} href="/acceso" onClick={close}>
+          {signedIn ? "Cuenta" : "Iniciar Sesión"}
+        </Link>
+        <div style={{ flex: 1 }} />
+        <div className="pixel" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
+          CRÉDITOS · 03
+        </div>
+      </aside>
+    </>
+  );
+}
