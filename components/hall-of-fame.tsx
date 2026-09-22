@@ -106,7 +106,7 @@ export default function HallOfFame() {
       </div>
 
       <div className="hall-back">
-        <Link className="btn lg" href="/">
+        <Link className="btn lg" href="/juegos">
           VOLVER A LA BIBLIOTECA
         </Link>
       </div>

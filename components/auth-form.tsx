@@ -27,7 +27,7 @@ export default function AuthForm() {
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     signIn({ name: normalizeName(name || "PLAYER1") });
-    router.push("/");
+    router.push("/juegos");
   };
 
   return (
@@ -145,7 +145,7 @@ export default function AuthForm() {
         </button>
       </form>
 
-      <button className="btn ghost auth-guest" type="button" onClick={() => { signIn(null); router.push("/"); }}>
+      <button className="btn ghost auth-guest" type="button" onClick={() => { signIn(null); router.push("/juegos"); }}>
         JUGAR COMO INVITADO
       </button>
 

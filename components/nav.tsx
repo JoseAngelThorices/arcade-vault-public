@@ -10,7 +10,7 @@ import { useSession } from "@/lib/session";
 
 /** La biblioteca sigue marcada mientras se navega por un juego concreto. */
 function isLibrary(pathname: string) {
-  return pathname === "/" || pathname.startsWith("/juego") || pathname.startsWith("/jugar");
+  return pathname === "/juegos" || pathname.startsWith("/juego") || pathname.startsWith("/jugar");
 }
 
 export default function Nav() {
@@ -18,6 +18,7 @@ export default function Nav() {
   const { user, ready, signOut } = useSession();
   const [open, setOpen] = useState(false);
 
+  const homeActive = pathname === "/";
   const libraryActive = isLibrary(pathname);
   const hallActive = pathname === "/salon";
   const accessActive = pathname === "/acceso";
@@ -39,7 +40,7 @@ export default function Nav() {
   return (
     <>
       <nav className="av-nav">
-        <Link className="logo" href="/" aria-label="Arcade Vault, ir a la biblioteca">
+        <Link className="logo" href="/" aria-label="Arcade Vault, ir al inicio">
           <div className="logo-mark" aria-hidden="true" />
           <div className="logo-text neon-cyan">
             ARCADE <span className="neon-magenta">VAULT</span>
@@ -47,7 +48,10 @@ export default function Nav() {
         </Link>
 
         <div className="links">
-          <Link className={libraryActive ? "active" : ""} href="/" aria-current={libraryActive ? "page" : undefined}>
+          <Link className={homeActive ? "active" : ""} href="/" aria-current={homeActive ? "page" : undefined}>
+            Inicio
+          </Link>
+          <Link className={libraryActive ? "active" : ""} href="/juegos" aria-current={libraryActive ? "page" : undefined}>
             Biblioteca
           </Link>
           <Link className={hallActive ? "active" : ""} href="/salon" aria-current={hallActive ? "page" : undefined}>
@@ -89,7 +93,10 @@ export default function Nav() {
         <div className="pixel neon-cyan" style={{ fontSize: 11, marginBottom: 16 }}>
           MENÚ
         </div>
-        <Link className={libraryActive ? "active" : ""} href="/" onClick={close}>
+        <Link className={homeActive ? "active" : ""} href="/" onClick={close}>
+          Inicio
+        </Link>
+        <Link className={libraryActive ? "active" : ""} href="/juegos" onClick={close}>
           Biblioteca
         </Link>
         <Link className={hallActive ? "active" : ""} href="/salon" onClick={close}>
