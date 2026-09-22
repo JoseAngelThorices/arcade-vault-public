@@ -18,7 +18,7 @@ export default function Nav() {
   const { user, ready, signOut } = useSession();
   const [open, setOpen] = useState(false);
 
-  const homeActive = pathname === "/";
+  const homeActive = pathname === "/inicio";
   const libraryActive = isLibrary(pathname);
   const hallActive = pathname === "/salon";
   const accessActive = pathname === "/acceso";
@@ -40,7 +40,7 @@ export default function Nav() {
   return (
     <>
       <nav className="av-nav">
-        <Link className="logo" href="/" aria-label="Arcade Vault, ir al inicio">
+        <Link className="logo" href="/inicio" aria-label="Arcade Vault, ir al inicio">
           <div className="logo-mark" aria-hidden="true" />
           <div className="logo-text neon-cyan">
             ARCADE <span className="neon-magenta">VAULT</span>
@@ -48,7 +48,7 @@ export default function Nav() {
         </Link>
 
         <div className="links">
-          <Link className={homeActive ? "active" : ""} href="/" aria-current={homeActive ? "page" : undefined}>
+          <Link className={homeActive ? "active" : ""} href="/inicio" aria-current={homeActive ? "page" : undefined}>
             Inicio
           </Link>
           <Link className={libraryActive ? "active" : ""} href="/juegos" aria-current={libraryActive ? "page" : undefined}>
@@ -93,7 +93,7 @@ export default function Nav() {
         <div className="pixel neon-cyan" style={{ fontSize: 11, marginBottom: 16 }}>
           MENÚ
         </div>
-        <Link className={homeActive ? "active" : ""} href="/" onClick={close}>
+        <Link className={homeActive ? "active" : ""} href="/inicio" onClick={close}>
           Inicio
         </Link>
         <Link className={libraryActive ? "active" : ""} href="/juegos" onClick={close}>
