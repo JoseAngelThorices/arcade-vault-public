@@ -21,6 +21,7 @@ export default function Nav() {
   const homeActive = pathname === "/inicio";
   const libraryActive = isLibrary(pathname);
   const hallActive = pathname === "/salon";
+  const aboutActive = pathname === "/acerca-de";
   const accessActive = pathname === "/acceso";
   const close = () => setOpen(false);
 
@@ -56,6 +57,9 @@ export default function Nav() {
           </Link>
           <Link className={hallActive ? "active" : ""} href="/salon" aria-current={hallActive ? "page" : undefined}>
             Salón de la Fama
+          </Link>
+          <Link className={aboutActive ? "active" : ""} href="/acerca-de" aria-current={aboutActive ? "page" : undefined}>
+            Acerca de
           </Link>
         </div>
 
@@ -101,6 +105,9 @@ export default function Nav() {
         </Link>
         <Link className={hallActive ? "active" : ""} href="/salon" onClick={close}>
           Salón de la Fama
+        </Link>
+        <Link className={aboutActive ? "active" : ""} href="/acerca-de" onClick={close}>
+          Acerca de
         </Link>
         <Link className={accessActive ? "active" : ""} href="/acceso" onClick={close}>
           {signedIn ? "Cuenta" : "Iniciar Sesión"}
