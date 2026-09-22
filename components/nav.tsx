@@ -59,7 +59,7 @@ export default function Nav() {
             Salón de la Fama
           </Link>
           <Link className={aboutActive ? "active" : ""} href="/acerca-de" aria-current={aboutActive ? "page" : undefined}>
-            Acerca de
+            contáctanos
           </Link>
         </div>
 
