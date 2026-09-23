@@ -6,9 +6,9 @@
 // ser un componente cliente.
 
 import Link from "next/link";
-import type { Game } from "@/lib/games";
+import type { GameRow } from "@/lib/supabase/types";
 
-export default function MiniCard({ game }: { game: Game }) {
+export default function MiniCard({ game }: { game: GameRow }) {
   return (
     <Link className="mini-card" href={`/juego/${game.id}`}>
       <div className="mini-cover">

@@ -2,26 +2,31 @@
 
 // Filtros y rejilla de la biblioteca (references/templates/biblioteca.jsx).
 // El estado vive en cliente: el filtrado es instantaneo al teclear y la URL no
-// cambia, igual que en el prototipo.
+// cambia, igual que en el prototipo. Los juegos llegan ya cargados desde el
+// Server Component de /juegos.
 
 import { useMemo, useState } from "react";
 import GameCard from "@/components/game-card";
-import { CATS, GAMES } from "@/lib/games";
+import { CATS } from "@/lib/games";
+import type { GameWithBest } from "@/lib/supabase/games";
 
-// Orden alfabetico solo en la biblioteca: el orden de GAMES lo usan el inicio
-// (primeros 6) y la pestaña por defecto del Salón de la Fama.
-const SORTED_GAMES = [...GAMES].sort((a, b) => a.title.localeCompare(b.title, "es"));
-
-export default function GameLibrary() {
+export default function GameLibrary({ games }: { games: GameWithBest[] }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<string>("TODOS");
 
+  // Orden alfabetico solo en la biblioteca: el inicio y el Salón de la Fama
+  // usan el orden de alta de Supabase.
+  const sorted = useMemo(
+    () => [...games].sort((a, b) => a.title.localeCompare(b.title, "es")),
+    [games],
+  );
+
   const filtered = useMemo(() => {
     const needle = query.toLowerCase();
-    return SORTED_GAMES.filter(
+    return sorted.filter(
       (g) => (cat === "TODOS" || g.cat === cat) && g.title.toLowerCase().includes(needle),
     );
-  }, [query, cat]);
+  }, [sorted, query, cat]);
 
   return (
     <>

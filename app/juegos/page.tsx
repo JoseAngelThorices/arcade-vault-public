@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import GameLibrary from "@/components/game-library";
+import { getGamesWithBest } from "@/lib/supabase/games";
 
 export const metadata: Metadata = {
   title: "Biblioteca · Arcade Vault",
-  description: "Los ocho juegos del Vault. Filtra por categoría o busca por nombre.",
+  description: "Los juegos del Vault. Filtra por categoría o busca por nombre.",
 };
 
-export default function GamesPage() {
+export default async function GamesPage() {
+  const games = await getGamesWithBest();
+
   return (
     <div className="fade-in">
       <section className="av-hero">
@@ -16,7 +19,7 @@ export default function GamesPage() {
         </div>
       </section>
 
-      <GameLibrary />
+      <GameLibrary games={games} />
     </div>
   );
 }

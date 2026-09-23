@@ -638,6 +638,19 @@
   .lb-row.top2 .rk, .lb-row.top2 .sc { color: var(--silver); text-shadow: 0 0 6px rgba(199,208,224,0.5); }
   .lb-row.top3 .rk, .lb-row.top3 .sc { color: var(--bronze); text-shadow: 0 0 6px rgba(217,122,58,0.5); }
 
+  /* Leaderboard sin puntuaciones: el puesto #01 queda libre, con borde
+     discontinuo dorado, y debajo la invitacion a ocuparlo. */
+  .lb-row.lb-vacant { border: 1px dashed rgba(255,207,58,0.45); margin: 12px; }
+  .lb-row.lb-vacant .pl { color: var(--ink-faint); letter-spacing: 0.2em; }
+  .lb-empty {
+    padding: 8px 16px 20px;
+    text-align: center;
+    color: var(--ink-dim);
+    font-family: var(--mono);
+    font-size: 13px;
+  }
+  .lb-empty p { margin: 0 0 14px; }
+
   /* ===== player ===== */
   .av-player {
     max-width: 1100px;
@@ -825,6 +838,7 @@
   }
   .modal .input-row input:focus { border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,245,255,0.35); }
   .modal .actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+  .modal .save-error { margin: 0 0 12px; font-family: var(--mono); font-size: 12px; color: var(--magenta); }
   .toast-saved {
     font-family: var(--pixel);
     font-size: 11px;
@@ -1055,6 +1069,10 @@
     border: 1px solid var(--line);
     background: var(--bg-2);
   }
+  /* Cambio de pestaña en curso: la tabla anterior se atenua hasta que llega la nueva. */
+  .hall-board { transition: opacity 160ms ease-out; }
+  .hall-board.is-loading { opacity: 0.35; pointer-events: none; }
+  .hall-table .lb-row.lb-vacant { margin: 18px; }
   .hall-table .th, .hall-table .tr {
     display: grid;
     grid-template-columns: 70px 1fr 1fr 140px;

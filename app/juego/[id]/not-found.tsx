@@ -15,7 +15,7 @@ export default function GameNotFound() {
       <div className="av-grid">
         <div className="av-empty">
           <div className="pixel">ESTE JUEGO NO ESTÁ EN EL VAULT</div>
-          <div>Revisa el enlace o vuelve a la biblioteca para ver los 8 juegos disponibles.</div>
+          <div>Revisa el enlace o vuelve a la biblioteca para ver los juegos disponibles.</div>
           <Link className="btn lg" href="/juegos">
             VOLVER AL VAULT
           </Link>

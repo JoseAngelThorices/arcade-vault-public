@@ -1,28 +1,28 @@
 // Detalle de un juego (references/templates/detalle.jsx).
-// Es Server Component: no hay estado, solo datos derivados del id de la ruta.
+// Es Server Component: juego y top 10 salen de Supabase en cada peticion.
 
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GAMES, getGame, seededScores } from "@/lib/games";
-
-/** Prerenderiza los 8 juegos: el catalogo es fijo. */
-export function generateStaticParams() {
-  return GAMES.map((game) => ({ id: game.id }));
-}
+import LeaderboardEmpty from "@/components/leaderboard-empty";
+import { formatScoreDate } from "@/lib/format";
+import { getGame } from "@/lib/supabase/games";
+import { countScores, getTopScores } from "@/lib/supabase/scores";
 
 export async function generateMetadata({ params }: PageProps<"/juego/[id]">) {
   const { id } = await params;
-  const game = getGame(id);
+  const game = await getGame(id);
   if (!game) return { title: "Juego no encontrado · Arcade Vault" };
   return { title: `${game.title} · Arcade Vault`, description: game.short };
 }
 
 export default async function GameDetailPage({ params }: PageProps<"/juego/[id]">) {
   const { id } = await params;
-  const game = getGame(id);
+  const game = await getGame(id);
   if (!game) notFound();
 
-  const scores = seededScores(id.length * 17 + 3, 10);
+  const [scores, plays] = await Promise.all([getTopScores(id, 10), countScores(id)]);
+  // Los scores llegan ordenados de mayor a menor: el primero es el récord.
+  const best = scores[0]?.score ?? 0;
 
   return (
     <div className="av-detail fade-in">
@@ -44,11 +44,11 @@ export default async function GameDetailPage({ params }: PageProps<"/juego/[id]"
           <div className="stat-strip">
             <div>
               <div className="l">Partidas</div>
-              <div className="v">{game.plays}</div>
+              <div className="v">{plays.toLocaleString("es-ES")}</div>
             </div>
             <div>
               <div className="l">Mejor global</div>
-              <div className="v magenta">{game.best.toLocaleString("es-ES")}</div>
+              <div className="v magenta">{best.toLocaleString("es-ES")}</div>
             </div>
             <div>
               <div className="l">Dificultad</div>
@@ -70,15 +70,16 @@ export default async function GameDetailPage({ params }: PageProps<"/juego/[id]"
       <aside>
         <div className="leaderboard">
           <h3>MEJORES PUNTUACIONES</h3>
+          {scores.length === 0 && <LeaderboardEmpty gameId={game.id} />}
           {scores.map((row, i) => (
             <div
-              key={row.name}
+              key={row.id}
               className={"lb-row" + (i < 3 ? ` top${i + 1}` : "")}
             >
-              <div className="rk">#{String(row.rank).padStart(2, "0")}</div>
+              <div className="rk">#{String(i + 1).padStart(2, "0")}</div>
               <div className="pl">
-                {row.name}
-                <div className="date">{row.date}</div>
+                {row.player_name}
+                <div className="date">{formatScoreDate(row.created_at)}</div>
               </div>
               <div className="sc">{row.score.toLocaleString("es-ES")}</div>
             </div>

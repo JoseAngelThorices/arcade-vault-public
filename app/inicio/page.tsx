@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FeatureIcon, FloatingSilhouettes, type FeatureIconKind } from "@/components/home-icons";
 import MiniCard from "@/components/mini-card";
-import { GAMES } from "@/lib/games";
+import { getGames } from "@/lib/supabase/games";
 
 export const metadata: Metadata = {
   title: "Arcade Vault · El arcade clásico está de vuelta",
@@ -51,9 +51,9 @@ const FEATURES: Feature[] = [
   },
 ];
 
-// El prototipo anunciaba "12+" juegos; en lib/games.ts hay 8.
-const STATS: Stat[] = [
-  { n: "8", u: "JUEGOS", s: "Y CONTANDO" },
+// El prototipo anunciaba "12+" juegos; aquí se cuentan los que hay en Supabase.
+const statsFor = (gameCount: number): Stat[] => [
+  { n: String(gameCount), u: "JUEGOS", s: "Y CONTANDO" },
   { n: "MILES", u: "DE PARTIDAS", s: "JUGADAS CADA DÍA" },
   { n: "GLOBAL", u: "RANKING", s: "COMPITE CON EL MUNDO" },
 ];
@@ -80,7 +80,9 @@ const TOP_TODAY: TopRow[] = [
 /** Las tres primeras filas del top llevan color de podio. */
 const PODIUM = ["top1", "top2", "top3"];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const games = await getGames();
+
   return (
     <div className="home fade-in">
       {/* HÉROE */}
@@ -141,7 +143,7 @@ export default function HomePage() {
           <div className="section-rule" />
         </div>
         <div className="mini-rail">
-          {GAMES.slice(0, 6).map((game) => (
+          {games.slice(0, 6).map((game) => (
             <MiniCard key={game.id} game={game} />
           ))}
         </div>
@@ -155,7 +157,7 @@ export default function HomePage() {
       {/* ESTADÍSTICAS */}
       <section className="reveal home-stats">
         <div className="stats-inner">
-          {STATS.map((stat, i) => (
+          {statsFor(games.length).map((stat, i) => (
             <div key={stat.u} className="stat-block" style={{ transitionDelay: `${i * 90}ms` }}>
               <div className="stat-n neon-yellow">{stat.n}</div>
               <div className="stat-u pixel">{stat.u}</div>

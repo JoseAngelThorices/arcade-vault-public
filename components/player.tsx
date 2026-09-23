@@ -6,14 +6,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import type { Game } from "@/lib/games";
 import { normalizeName, useSession } from "@/lib/session";
+import type { GameRow } from "@/lib/supabase/types";
 
 const SCORE = 0;
 const LIVES = 3;
 const LEVEL = 1;
 
-export default function GamePlayer({ game }: { game: Game }) {
+export default function GamePlayer({ game }: { game: GameRow }) {
   const { user, ready, saveScore } = useSession();
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
