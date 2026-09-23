@@ -8,13 +8,17 @@ import { useMemo, useState } from "react";
 import GameCard from "@/components/game-card";
 import { CATS, GAMES } from "@/lib/games";
 
+// Orden alfabetico solo en la biblioteca: el orden de GAMES lo usan el inicio
+// (primeros 6) y la pestaña por defecto del Salón de la Fama.
+const SORTED_GAMES = [...GAMES].sort((a, b) => a.title.localeCompare(b.title, "es"));
+
 export default function GameLibrary() {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState<string>("TODOS");
 
   const filtered = useMemo(() => {
     const needle = query.toLowerCase();
-    return GAMES.filter(
+    return SORTED_GAMES.filter(
       (g) => (cat === "TODOS" || g.cat === cat) && g.title.toLowerCase().includes(needle),
     );
   }, [query, cat]);
