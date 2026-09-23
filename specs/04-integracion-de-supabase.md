@@ -15,7 +15,7 @@
 - Instalar `@supabase/supabase-js` y `@supabase/ssr`.
 - Crear `lib/supabase/client.ts` — cliente de navegador para componentes `"use client"`.
 - Crear `lib/supabase/server.ts` — cliente de servidor para Server Components y Route Handlers.
-- Añadir `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` a `specs/.env.template`
+- Añadir `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` a `specs/.env.template`
   y a `.env.local` (raíz del proyecto) como valores vacíos (el desarrollador los rellena a mano).
 
 **Fuera de alcance (para specs futuros):**
@@ -45,7 +45,7 @@ son utilidades de configuración, no estructuras de datos.
 
    ```
    NEXT_PUBLIC_SUPABASE_URL=
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=
+   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
    ```
 
    Verificación: ambos archivos contienen las dos claves (vacías en `.env.local`,
@@ -60,7 +60,7 @@ son utilidades de configuración, no estructuras de datos.
    export const createClient = () =>
      createBrowserClient(
        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
      );
    ```
 
@@ -77,7 +77,7 @@ son utilidades de configuración, no estructuras de datos.
      const cookieStore = await cookies();
      return createServerClient(
        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
        {
          cookies: {
            getAll: () => cookieStore.getAll(),
@@ -111,7 +111,7 @@ son utilidades de configuración, no estructuras de datos.
 ## Criterios de aceptación
 
 - [ ] `@supabase/supabase-js` y `@supabase/ssr` aparecen en `dependencies` de `package.json`.
-- [ ] `.env.local` contiene `NEXT_PUBLIC_SUPABASE_URL=` y `NEXT_PUBLIC_SUPABASE_ANON_KEY=`.
+- [ ] `.env.local` contiene `NEXT_PUBLIC_SUPABASE_URL=` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=`.
 - [ ] `specs/.env.template` contiene las mismas dos claves, vacías y con un comentario que las explique.
 - [ ] No existe un `.env.template` nuevo en la raíz del proyecto.
 - [ ] `lib/supabase/client.ts` existe y exporta `createClient` usando `createBrowserClient`.
@@ -135,6 +135,10 @@ son utilidades de configuración, no estructuras de datos.
 - **Sí:** `try/catch` en `setAll` del cliente de servidor. Es el patrón de la plantilla oficial
   de Supabase: sin él, el primer refresco de sesión dentro de un Server Component rompe
   la página en cuanto llegue el spec de Auth.
+
+- **Sí:** `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` en lugar de `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+  Es el nombre de las claves publicables actuales de Supabase (`sb_publishable_…`), que
+  sustituyen a la clave `anon` antigua.
 
 - **No:** `SUPABASE_SERVICE_ROLE_KEY` en este spec. Solo se añade cuando un spec concreto
   lo requiera; incluirla ahora sería infraestructura sin uso.
