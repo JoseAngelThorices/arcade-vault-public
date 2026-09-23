@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tetris</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="wrapper">
+    <button id="theme-toggle" class="theme-toggle">
+      <span class="toggle-icon">&#9790;</span>
+      <span class="toggle-label">LIGHT</span>
+    </button>
+    <h1 class="game-title">TETRIS</h1>
+    <div class="game-container">
+      <canvas id="board" width="300" height="600"></canvas>
+
+      <aside class="panel">
+        <div class="panel-section">
+          <span class="label">SCORE</span>
+          <span class="value" id="score">0</span>
+        </div>
+        <div class="panel-section">
+          <span class="label">LINES</span>
+          <span class="value" id="lines">0</span>
+        </div>
+        <div class="panel-section">
+          <span class="label">LEVEL</span>
+          <span class="value" id="level">1</span>
+        </div>
+
+        <div class="panel-section">
+          <span class="label">NEXT</span>
+          <canvas id="next-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="panel-section">
+          <span class="label" id="skin-label">SKIN</span>
+          <div id="skin-picker" class="skin-picker" role="group" aria-labelledby="skin-label"></div>
+        </div>
+
+        <div class="panel-section controls">
+          <span class="label">CONTROLS</span>
+          <ul>
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <div id="pause-menu" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <div class="overlay-box pause-box">
+        <p id="pause-title">PAUSA</p>
+        <button type="button" class="menu-btn primary" id="resume-btn">Reanudar</button>
+        <button type="button" class="menu-btn" id="pause-restart-btn">Reiniciar</button>
+        <button type="button" class="menu-btn" id="controls-btn" aria-expanded="false" aria-controls="pause-controls">Ver controles</button>
+        <div id="pause-controls" class="pause-controls" hidden>
+          <ul>
+            <li><kbd>←</kbd><kbd>→</kbd> mover</li>
+            <li><kbd>↑</kbd><kbd>X</kbd> rotar</li>
+            <li><kbd>↓</kbd> bajar</li>
+            <li><kbd>Space</kbd> caída</li>
+            <li><kbd>P</kbd><kbd>Esc</kbd> pausa / reanudar</li>
+          </ul>
+        </div>
+        <label class="level-select" for="start-level-select">
+          <span class="label">NIVEL INICIAL</span>
+          <select id="start-level-select"></select>
+        </label>
+        <p class="menu-hint">Se aplica al reiniciar o en la próxima partida</p>
+      </div>
+    </div>
+
+    <div id="overlay" class="overlay hidden" data-mode="start">
+      <div class="overlay-box">
+        <p id="overlay-title">TETRIS</p>
+        <p id="overlay-score"></p>
+        <div id="overlay-msgs" class="overlay-msgs"></div>
+
+        <form id="name-form" class="name-form" hidden>
+          <label for="name-input" class="label">TU NOMBRE</label>
+          <div class="name-row">
+            <input id="name-input" type="text" maxlength="12" autocomplete="off" spellcheck="false" />
+            <button type="submit" id="save-btn">Guardar</button>
+          </div>
+        </form>
+
+        <section id="records-section" class="records">
+          <span class="label">TOP 5</span>
+          <table class="records-table">
+            <thead>
+              <tr><th>#</th><th>NOMBRE</th><th>PTS</th><th>LÍN</th><th>NIV</th><th>CMB</th></tr>
+            </thead>
+            <tbody id="records-body"></tbody>
+          </table>
+          <div class="records-best">
+            <span>MEJOR COMBO <b id="best-combo">0</b></span>
+            <span>LÍNEAS MÁX <b id="max-lines">0</b></span>
+          </div>
+          <button type="button" id="reset-records-btn" class="link-btn">Resetear records</button>
+          <div id="reset-confirm" class="reset-confirm" hidden>
+            <span>¿Borrar todos los records?</span>
+            <button type="button" id="reset-yes-btn" class="small-btn danger">Sí</button>
+            <button type="button" id="reset-no-btn" class="small-btn">No</button>
+          </div>
+        </section>
+
+        <button type="button" id="restart-btn">Jugar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
