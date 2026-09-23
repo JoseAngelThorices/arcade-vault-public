@@ -182,11 +182,11 @@ player_name: name, score, user_id: null }`.
 - [x] `/hall-of-fame` muestra únicamente tabs de juegos presentes en Supabase.
 - [x] Cuando no hay scores, los leaderboards muestran el mensaje de estado vacío
       en lugar de datos falsos.
-- [ ] Al terminar una partida de Asteroids, el modal pre-rellena el nombre desde
+- [x] Al terminar una partida de Asteroids, el modal pre-rellena el nombre desde
       `localStorage` si existe.
-- [ ] Al confirmar el nombre en el modal, el score se inserta en Supabase y el
+- [x] Al confirmar el nombre en el modal, el score se inserta en Supabase y el
       nombre se persiste en `localStorage` para la próxima partida.
-- [ ] El botón de guardar se deshabilita tras el primer envío (sin doble inserción).
+- [x] El botón de guardar se deshabilita tras el primer envío (sin doble inserción).
 - [x] El score guardado aparece en `/games/asteroids` y en `/hall-of-fame` al recargar.
 - [x] `npm run build` completa sin errores de TypeScript.
 - [x] Ninguna ruta existente devuelve 500.
@@ -256,6 +256,3 @@ Desviaciones acordadas durante la implementación (2026-09-23):
   mientras se guarda y después.
 - El título sembrado es `ASTEROIDS`, tal como indica el seed (antes la UI decía
   `ASTEROIDES`). `CATS` conserva `VERSUS` aunque `GameRow.cat` no lo incluya.
-
-Criterios pendientes de verificar en navegador: pre-relleno del nombre, persistencia
-en `av_player_name` y bloqueo del botón tras guardar.
