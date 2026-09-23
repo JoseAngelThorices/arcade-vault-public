@@ -85,17 +85,6 @@ export const GAMES: Game[] = [
     plays: "18.0K",
   },
   {
-    id: "rocas",
-    title: "ROCAS",
-    short: "Pulveriza asteroides en gravedad cero.",
-    long: "Tu nave triangular flota en vacío absoluto. Dispara y rota para dividir rocas en fragmentos cada vez más pequeños. Cuidado con los OVNIs en el horizonte.",
-    cat: "SHOOTER",
-    cover: "cover-rocas",
-    color: "yellow",
-    best: 41200,
-    plays: "15.6K",
-  },
-  {
     id: "ranaria",
     title: "RANARIA",
     short: "Cruza la autopista de pixeles.",
@@ -116,6 +105,17 @@ export const GAMES: Game[] = [
     color: "cyan",
     best: 24,
     plays: "4.2K",
+  },
+  {
+    id: "asteroids",
+    title: "ASTEROIDES",
+    short: "Pulveriza rocas en gravedad cero.",
+    long: "Tu nave triangular flota en vacío absoluto. Dispara y rota para dividir rocas en fragmentos cada vez más pequeños. Supera niveles y acumula puntos antes de que los asteroides te alcancen.",
+    cat: "SHOOTER",
+    cover: "cover-rocas",
+    color: "yellow",
+    best: 0,
+    plays: "0",
   },
 ];
 

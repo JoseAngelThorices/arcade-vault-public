@@ -652,10 +652,10 @@
     margin-bottom: 18px;
     flex-wrap: wrap;
   }
-  .hud-stats { display: flex; gap: 24px; flex-wrap: wrap; }
+  .hud-stats { display: flex; gap: 50px; flex-wrap: wrap; }
   .hud-stat { display: flex; flex-direction: column; gap: 4px; }
   .hud-stat.player .v { color: var(--ink); text-shadow: none; }
-  .hud-stat .l { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); letter-spacing: 0.14em; text-transform: uppercase; }
+  .hud-stat .l { font-family: var(--mono); font-size: 15px; color: var(--ink-faint); letter-spacing: 0.14em; text-transform: uppercase; }
   .hud-stat .v { font-family: var(--pixel); font-size: 16px; color: var(--cyan); text-shadow: 0 0 6px rgba(0,245,255,0.5); }
   .hud-stat.lives .v { color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.5); }
   .hud-stat.level .v { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
