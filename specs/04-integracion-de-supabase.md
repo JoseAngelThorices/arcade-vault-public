@@ -1,6 +1,6 @@
 # SPEC 04 — Integración de Supabase
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** SPEC 03
 > **Fecha:** 2026-09-23
 > **Objetivo:** Instalar y configurar el cliente de Supabase (navegador + servidor) como
@@ -110,15 +110,15 @@ son utilidades de configuración, no estructuras de datos.
 
 ## Criterios de aceptación
 
-- [ ] `@supabase/supabase-js` y `@supabase/ssr` aparecen en `dependencies` de `package.json`.
-- [ ] `.env.local` contiene `NEXT_PUBLIC_SUPABASE_URL=` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=`.
-- [ ] `specs/.env.template` contiene las mismas dos claves, vacías y con un comentario que las explique.
-- [ ] No existe un `.env.template` nuevo en la raíz del proyecto.
-- [ ] `lib/supabase/client.ts` existe y exporta `createClient` usando `createBrowserClient`.
-- [ ] `lib/supabase/server.ts` existe y exporta `createClient` async usando `createServerClient`.
-- [ ] En `lib/supabase/server.ts`, el cuerpo de `setAll` está envuelto en `try/catch`.
-- [ ] `npm run build` completa sin errores de TypeScript relacionados con los nuevos archivos.
-- [ ] Ninguna página o componente existente se rompe tras la integración.
+- [x] `@supabase/supabase-js` y `@supabase/ssr` aparecen en `dependencies` de `package.json`.
+- [x] `.env.local` contiene `NEXT_PUBLIC_SUPABASE_URL=` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=`.
+- [x] `specs/.env.template` contiene las mismas dos claves, vacías y con un comentario que las explique.
+- [x] No existe un `.env.template` nuevo en la raíz del proyecto.
+- [x] `lib/supabase/client.ts` existe y exporta `createClient` usando `createBrowserClient`.
+- [x] `lib/supabase/server.ts` existe y exporta `createClient` async usando `createServerClient`.
+- [x] En `lib/supabase/server.ts`, el cuerpo de `setAll` está envuelto en `try/catch`.
+- [x] `npm run build` completa sin errores de TypeScript relacionados con los nuevos archivos.
+- [x] Ninguna página o componente existente se rompe tras la integración.
 
 ---
 
