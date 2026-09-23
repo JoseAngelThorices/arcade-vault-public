@@ -7,14 +7,14 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import type { Game } from "@/lib/games";
+import type { GameWithBest } from "@/lib/supabase/games";
 
 /** Los colores que no tienen variante propia de boton usan el cian por defecto. */
-function buttonVariant(color: Game["color"]) {
+function buttonVariant(color: GameWithBest["color"]) {
   return color === "magenta" || color === "yellow" ? ` ${color}` : "";
 }
 
-export default function GameCard({ game }: { game: Game }) {
+export default function GameCard({ game }: { game: GameWithBest }) {
   const cardRef = useRef<HTMLAnchorElement>(null);
 
   const onMouseMove = (e: React.MouseEvent<HTMLAnchorElement>) => {
