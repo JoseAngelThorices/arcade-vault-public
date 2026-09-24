@@ -98,7 +98,7 @@ Not part of the build; source material for specs.
 
 - `implemented-games.md` — table of the games already implemented (the source of truth for "which games exist").
 - `templates/` — the original no-build prototype (`Arcade Vault.html`, React 18 UMD + Babel standalone, globals, hash routing, localStorage mocks) plus `home-about/` for the landing and about pages. It is the visual and functional spec: when porting, keep layout, copy, and tokens; re-derive the code (no globals, no prop-drilled router, no plain-CSS-only approach).
-- `02-asteroids/`, `03-tetris/`, `04-Arkanoid/` — standalone canvas games (`game.js` + `index.html`) that were adapted into `components/games/`. Their own `CLAUDE.md`/`.claude/` belong to those projects, not this one.
+- `start-games/` — `02-asteroids/`, `03-tetris/`, `04-Arkanoid/`: standalone canvas games (`game.js` + `index.html`) that were adapted into `components/games/`. Their own `CLAUDE.md`/`.claude/` belong to those projects, not this one.
 - `source-assets/` — raw assets for games built from scratch (e.g. Snake fruit sprites).
 
 ## Stack notes that differ from older Next.js

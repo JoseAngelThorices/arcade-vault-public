@@ -15,7 +15,7 @@
 
 - Añadir la entrada `asteroids` al array `GAMES` en `lib/games.ts`.
 - Crear `components/games/asteroids-game.tsx` — componente React que encapsula el canvas
-  y el bucle de juego adaptado de `references/02-asteroids/game.js`. Acepta las props
+  y el bucle de juego adaptado de `references/start-games/02-asteroids/game.js`. Acepta las props
   `paused`, `onScoreChange`, `onLivesChange`, `onLevelChange` y `onGameOver`.
 - El canvas deja de dibujar puntuación, nivel y vidas; solo conserva la cuenta atrás de los
   power-ups activos.

@@ -3,7 +3,7 @@
 > **Estado:** Aprobado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-24
-> **Objetivo:** Integrar Arkanoid (`references/04-Arkanoid/game.js`) como juego jugable con ID
+> **Objetivo:** Integrar Arkanoid (`references/start-games/04-Arkanoid/game.js`) como juego jugable con ID
 > `arkanoid`, conectando puntuación, vidas, combo y fin de partida con el HUD React de su
 > página de juego y con el leaderboard de Supabase.
 
@@ -17,7 +17,7 @@
 - Copiar los assets del original a `public/games/arkanoid/`: `spritesheet-breakout.png`,
   `ball-bounce.mp3` y `break-sound.mp3`.
 - Crear `components/games/arkanoid-game.tsx`: componente React que encapsula el canvas
-  (1000×700) y el bucle de juego adaptado de `references/04-Arkanoid/game.js` y
+  (1000×700) y el bucle de juego adaptado de `references/start-games/04-Arkanoid/game.js` y
   `assets/spritesheet.js`. Acepta las props `paused`, `onScoreChange`, `onLivesChange`,
   `onComboChange`, `onPauseToggle` y `onGameOver`.
 - Conservar la mecánica del original: muro de 7×12, fila gris de 2 golpes (20 puntos), filas
@@ -114,7 +114,7 @@ No se introducen tablas ni tipos TypeScript compartidos nuevos. Se reutilizan `G
 
 1. **Seed en Supabase y assets.** Ejecutar el INSERT de la fila `arkanoid` en el SQL Editor
    de Supabase. Copiar `spritesheet-breakout.png`, `ball-bounce.mp3` y `break-sound.mp3` de
-   `references/04-Arkanoid/assets/` a `public/games/arkanoid/`.
+   `references/start-games/04-Arkanoid/assets/` a `public/games/arkanoid/`.
    Verificación: la card de ARKANOID aparece en `/juegos`, `/juego/arkanoid` carga su detalle
    y `/games/arkanoid/spritesheet-breakout.png` responde 200.
 
@@ -124,7 +124,7 @@ No se introducen tablas ni tipos TypeScript compartidos nuevos. Se reutilizan `G
    - Carga el spritesheet desde `/games/arkanoid/spritesheet-breakout.png` y arranca el
      bucle cuando termina (como `loadSpritesheet`). Los sonidos se crean con `new Audio()`
      sobre `/games/arkanoid/*.mp3`.
-   - Contiene el bucle completo adaptado de `references/04-Arkanoid/game.js` (`createBricks`,
+   - Contiene el bucle completo adaptado de `references/start-games/04-Arkanoid/game.js` (`createBricks`,
      `resetGame`, `launchBall`, `updatePaddle`, `updateBall`, `collidePaddle`,
      `collideBricks`, `hitBrick`, `breakBrick`, `updateBallSpeed`, `loseLife`, partículas,
      explosiones, textos flotantes y `drawField`).

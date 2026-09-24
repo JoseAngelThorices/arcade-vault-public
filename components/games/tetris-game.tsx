@@ -1,6 +1,6 @@
 "use client";
 
-// Tetris (references/03-tetris/game.js) dentro de un componente React.
+// Tetris (references/start-games/03-tetris/game.js) dentro de un componente React.
 // La mecanica es la del original (7 piezas estandar, wall kicks, ghost,
 // soft/hard drop, puntuacion clasica por nivel); los cambios son: skin Retro
 // fija, nivel inicial 1, la pausa llega por prop (P y Escape la piden con

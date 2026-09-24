@@ -1,6 +1,6 @@
 "use client";
 
-// Arkanoid (references/04-Arkanoid/game.js + assets/spritesheet.js) dentro de un
+// Arkanoid (references/start-games/04-Arkanoid/game.js + assets/spritesheet.js) dentro de un
 // componente React. La mecanica y los efectos son los del original (muro 7x12,
 // grises de 2 golpes, combo x8, aceleracion progresiva, explosiones, escombros,
 // estela y puntos flotantes); los cambios son: la pausa llega por prop (P y

@@ -1,8 +1,8 @@
 ---
 name: add-game
-description: Genera un spec para añadir un nuevo juego canvas a Arcade Vault (componente React, play-page, fila en tabla games de Supabase y wiring del modal de leaderboard). Acepta una carpeta de references/ o una descripción libre del juego. No escribe código; solo produce specs/NN-<slug>-game.md.
+description: Genera un spec para añadir un nuevo juego canvas a Arcade Vault (componente React, play-page, fila en tabla games de Supabase y wiring del modal de leaderboard). Acepta una carpeta de references/start-games/ o una descripción libre del juego. No escribe código; solo produce specs/NN-<slug>-game.md.
 disable-model-invocation: true
-argument-hint: '<carpeta references/NN-name> o <descripción corta del juego>'
+argument-hint: '<carpeta references/start-games/NN-name> o <descripción corta del juego>'
 ---
 
 # /add-game — Generador de spec para nuevo juego
@@ -41,7 +41,7 @@ Antes de preguntar nada, recoge contexto:
 
 Evalúa `$ARGUMENTS`:
 
-**Caso A — Reference folder.** Si `$ARGUMENTS` coincide con una ruta dentro de `references/` (excepto `templates/`) (ej. `references/03-tetris` o simplemente `03-tetris`):
+**Caso A — Reference folder.** Si `$ARGUMENTS` coincide con una carpeta dentro de `references/start-games/` (ej. `references/start-games/03-tetris` o simplemente `03-tetris`, que se resuelve a `references/start-games/03-tetris`):
 
 - Leer `game.js` de esa carpeta.
 - Leer `index.html` para identificar dimensiones del canvas y script de arranque.
@@ -54,7 +54,7 @@ Evalúa `$ARGUMENTS`:
 - Si está vacío, pedir una frase de descripción del juego antes de continuar.
 - Tratar los datos del juego como desconocidos; preguntar todo en el Bloque B.
 
-**Caso C — Sin argumentos claros.** Preguntar: "¿El juego viene de `references/` o lo describimos desde cero?"
+**Caso C — Sin argumentos claros.** Preguntar: "¿El juego viene de `references/start-games/` o lo describimos desde cero?"
 
 ---
 

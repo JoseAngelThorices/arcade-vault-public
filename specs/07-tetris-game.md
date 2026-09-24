@@ -3,7 +3,7 @@
 > **Estado:** Aprobado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-24
-> **Objetivo:** Integrar Tetris (`references/03-tetris/game.js`) como juego jugable con ID
+> **Objetivo:** Integrar Tetris (`references/start-games/03-tetris/game.js`) como juego jugable con ID
 > `tetris`, conectando puntuación, líneas, nivel y fin de partida con el HUD React de su
 > página de juego y con el leaderboard de Supabase.
 
@@ -16,7 +16,7 @@
 - Insertar la fila `tetris` en la tabla `games` de Supabase (seed manual vía SQL).
 - Crear `components/games/tetris-game.tsx` — componente React que encapsula el tablero
   (canvas 300×600), la vista previa de la siguiente pieza (canvas lateral 120×120) y el bucle
-  de juego adaptado de `references/03-tetris/game.js`. Acepta las props `paused`,
+  de juego adaptado de `references/start-games/03-tetris/game.js`. Acepta las props `paused`,
   `onScoreChange`, `onLinesChange`, `onLevelChange`, `onPauseToggle` y `onGameOver`.
 - Conservar la mecánica del original: tablero 10×20, las 7 piezas estándar (sin la tuerca),
   rotación con wall kicks, soft drop, hard drop, pieza fantasma, puntuación
@@ -93,7 +93,7 @@ de `lib/supabase/types.ts`.
 2. **Crear `components/games/tetris-game.tsx`** — componente `"use client"` que:
    - Renderiza el tablero `<canvas>` de 300×600 y, a su lado, el `<canvas>` de vista previa
      de 120×120.
-   - Contiene el bucle completo adaptado de `references/03-tetris/game.js` (`collide`,
+   - Contiene el bucle completo adaptado de `references/start-games/03-tetris/game.js` (`collide`,
      `rotateCW`, `tryRotate`, `clearLines`, `ghostY`, `hardDrop`, `softDrop`, `lockPiece`,
      `spawn`, `draw`, `drawNext`), con la skin Retro fija y nivel inicial 1.
    - Recibe la prop `paused: boolean`: si es `true`, el bucle no avanza la caída y las teclas

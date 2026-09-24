@@ -1,6 +1,6 @@
 "use client";
 
-// Asteroids (references/02-asteroids/game.js) dentro de un componente React.
+// Asteroids (references/start-games/02-asteroids/game.js) dentro de un componente React.
 // El bucle es el del original; los cambios son: la pausa llega por prop, cada
 // cambio de puntuacion/vidas/nivel se notifica por callback, y ni esos valores
 // ni la capa "GAME OVER" se dibujan en el canvas: los muestran el HUD y el
