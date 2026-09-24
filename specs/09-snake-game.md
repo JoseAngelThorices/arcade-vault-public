@@ -1,6 +1,6 @@
 # SPEC 09 — Integración del juego Snake
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-24
 > **Objetivo:** Crear desde cero Snake como juego jugable con ID `snake`, con frutas en pixel
