@@ -62,7 +62,7 @@ Ejecutar en el SQL Editor de Supabase:
 INSERT INTO games (id, title, short, long, cat, cover, color)
 VALUES (
   'tetris', 'TETRIS', 'Apila piezas antes de que el techo te aplaste.',
-  'Encaja las piezas que caen y completa líneas para hacerlas desaparecer. Cada 10 líneas subes de nivel y la caída se acelera. Cuidado con la tuerca: la pieza extra que no perdona.',
+  'Encaja las piezas que caen y completa líneas para hacerlas desaparecer. Cada 10 líneas subes de nivel y la caída se acelera.',
   'PUZZLE', 'cover-tetro', 'magenta'
 );
 ```
