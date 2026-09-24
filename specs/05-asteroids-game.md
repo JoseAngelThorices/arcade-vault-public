@@ -146,3 +146,16 @@ Este spec no introduce ningún modelo de datos persistente.
 
 - **No: controles de pausa dentro del canvas** — la plataforma controla la pausa mediante una prop.
   Razón: coherencia con el resto de juegos de la plataforma.
+
+---
+
+## Notas de implementación
+
+Cambios acordados después de la implementación (2026-09-24), sin spec propio:
+
+- **Cambio de nivel limpio.** Al pasar de nivel desaparecen los power-ups sin recoger y se
+  cortan los efectos activos (TRIPLE, LENTO, TURBO, ESCUDO). Los cinco tipos vuelven a caer
+  al destruir las rocas del nivel nuevo. Puntuación y vidas se conservan.
+- **Dificultad por nivel.** Además de los asteroides extra (`3 + nivel`), su velocidad sube
+  un 10 % por nivel con tope ×1,8 (`LEVEL_SPEED_STEP` y `LEVEL_SPEED_MAX` en
+  `components/games/asteroids-game.tsx`).

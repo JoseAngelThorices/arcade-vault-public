@@ -136,6 +136,11 @@ function startGame(
   const RADII = [0, 16, 30, 50]; // por tamaño 1, 2, 3
   const SPEEDS = [0, 85, 55, 32]; // velocidad base por tamaño
   const POINTS = [0, 100, 50, 20]; // puntos por tamaño
+  const LEVEL_SPEED_STEP = 0.1; // +10 % de velocidad de asteroides por nivel
+  const LEVEL_SPEED_MAX = 1.8; // tope del multiplicador (nivel 9 en adelante)
+
+  // Multiplicador de velocidad de los asteroides según el nivel actual.
+  const levelSpeed = () => Math.min(1 + (level - 1) * LEVEL_SPEED_STEP, LEVEL_SPEED_MAX);
 
   class Asteroid {
     x: number;
@@ -156,7 +161,7 @@ function startGame(
       this.radius = RADII[size];
 
       const angle = rand(0, Math.PI * 2);
-      const speed = SPEEDS[size] + rand(-15, 15);
+      const speed = (SPEEDS[size] + rand(-15, 15)) * levelSpeed();
       this.vx = Math.cos(angle) * speed;
       this.vy = Math.sin(angle) * speed;
       this.rotSpeed = rand(-1.2, 1.2);
@@ -550,7 +555,11 @@ function startGame(
     level++;
     bullets = [];
     particles = [];
-    // Los power-ups y sus efectos sobreviven al cambio de nivel
+    // Nivel limpio: desaparecen los power-ups sin recoger y se cortan los
+    // efectos activos. spawnAsteroids() vuelve a dejar pendientes los cinco
+    // tipos, que caen de nuevo al destruir las rocas del nivel nuevo.
+    powerups = [];
+    clearEffects();
     ship.reset();
     spawnAsteroids(3 + level);
   }
