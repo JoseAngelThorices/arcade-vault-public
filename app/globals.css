@@ -474,16 +474,44 @@
     image-rendering: pixelated;
   }
 
-  .cover-snake { background: linear-gradient(135deg,#003a2a,#0a0a18); }
+  /* Tablero de 8x6 celdas dentro de inset 18% 14%: celda = 12.5% x 16.667% de
+     la caja; la posicion de la columna c es c/7 y la de la fila r es r/5. */
+  .cover-snake { background: linear-gradient(135deg,#003a2a,#0a0a18); isolation: isolate; }
   .cover-snake::after {
     content: "";
-    position: absolute; inset: 0;
-    background-image:
-      radial-gradient(circle at 70% 50%, var(--magenta) 0 6px, transparent 7px),
-      linear-gradient(90deg, var(--green) 0 40px, transparent 40px) 20% 50% / 200px 12px no-repeat,
-      linear-gradient(90deg, var(--green) 0 12px, transparent 12px) calc(20% + 40px) calc(50% - 12px)/12px 12px no-repeat,
-      linear-gradient(90deg, var(--green) 0 12px, transparent 12px) calc(20% + 28px) calc(50% - 12px)/12px 12px no-repeat;
+    position: absolute;
+    inset: 18% 14%;
+    background:
+      /* ojos (van encima de la cabeza) */
+      linear-gradient(#0a0a0f,#0a0a0f) 71.8% 56.4%/2.5% 4%,
+      linear-gradient(#0a0a0f,#0a0a0f) 71.8% 62.5%/2.5% 4%,
+      /* cabeza en (5,3), mirando a la fruta */
+      linear-gradient(#9dffd0,#9dffd0) 71.429% 60%/12.5% 16.667%,
+      /* cuerpo: sube desde la cola en (0,1) y gira hacia la derecha */
+      linear-gradient(var(--green),var(--green)) 57.143% 60%/12.5% 16.667%,
+      linear-gradient(var(--green),var(--green)) 42.857% 60%/12.5% 16.667%,
+      linear-gradient(var(--green),var(--green)) 28.571% 60%/12.5% 16.667%,
+      linear-gradient(var(--green),var(--green)) 28.571% 40%/12.5% 16.667%,
+      linear-gradient(var(--green),var(--green)) 28.571% 20%/12.5% 16.667%,
+      linear-gradient(#00d474,#00d474) 14.286% 20%/12.5% 16.667%,
+      linear-gradient(#00a860,#00a860) 0% 20%/12.5% 16.667%,
+      /* fruta en (7,3) */
+      radial-gradient(circle closest-side, var(--magenta) 0 62%, transparent 66%) 100% 60%/12.5% 16.667%;
+    background-repeat: no-repeat;
     filter: drop-shadow(0 0 6px rgba(0,255,136,0.6));
+  }
+  /* Cuadricula del tablero sobre toda la cover: separa los bloques de la
+     serpiente, como en el canvas. Mosaico = una celda (72%/8 x 64%/6), fase
+     alineada con el borde de la caja de ::after. */
+  .cover-snake::before {
+    content: "";
+    position: absolute; inset: 0;
+    z-index: 1;
+    background:
+      linear-gradient(90deg, rgba(0,0,0,0.5) 2px, transparent 2px),
+      linear-gradient(180deg, rgba(0,0,0,0.5) 2px, transparent 2px);
+    background-size: 9% 10.667%;
+    background-position: 5.495% 8.209%;
   }
 
   .cover-glot { background: radial-gradient(circle at 50% 50%, #1a002a, #0a0a18); }
