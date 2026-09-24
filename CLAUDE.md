@@ -32,6 +32,8 @@ All UI copy is in Spanish, and numbers are formatted with `toLocaleString("es-ES
 ## Skills
 usa siempre el /frontend-desing para hacer interfaces de usuario.
 
+Para añadir un juego jugable con leaderboard (desde `references/` o nuevo), usa `/add-game`: hace preguntas y escribe `specs/NN-<id>-game.md` en estado Borrador, que luego se ejecuta con `/spec-impl`. Sigue el patrón de SPEC 05 y SPEC 06.
+
 No test runner is configured — there is no test script, framework, or test file in the repo. Adding one is a project decision; confirm the choice with the user first.
 
 ## Stack notes that differ from older Next.js
