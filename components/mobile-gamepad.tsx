@@ -1,10 +1,11 @@
 "use client";
 
 // Gamepad virtual de los reproductores en móvil (SPEC 10): D-pad, botones A/B,
-// pausa, fin de partida y selector de skin. No conoce los juegos: cada botón despacha en
-// `document` el KeyboardEvent sintético de su `code` (keydown al pulsar, keyup
+// pausa, fin de partida y selector de skin, con el aspecto neón de SPEC 11.
+// No conoce los juegos: cada botón despacha en `document` el KeyboardEvent sintético de su `code` (keydown al pulsar, keyup
 // al soltar), y los listeners de teclado de los motores lo tratan como una
-// tecla real. Solo se ve por debajo de `md`. Estilos: .gamepad de globals.css.
+// tecla real. Solo se ve por debajo de `md`. Estilos: .gamepad de globals.css
+// (el estado pulsado se pinta con `data-pressed`).
 
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type { Skin } from "@/lib/skins";
@@ -109,7 +110,7 @@ function PadButton({
 /** Flecha del D-pad; `rotate` en grados, 0 = arriba. */
 function Arrow({ rotate }: { rotate: number }) {
   return (
-    <svg viewBox="0 0 12 12" width="14" height="14" aria-hidden="true" style={{ transform: `rotate(${rotate}deg)` }}>
+    <svg viewBox="0 0 12 12" width="20" height="20" aria-hidden="true" style={{ transform: `rotate(${rotate}deg)` }}>
       <path d="M6 2 L11 9 H1 Z" fill="currentColor" />
     </svg>
   );
@@ -134,7 +135,9 @@ export default function MobileGamepad({
           <PadButton code={keyMap.left} disabled={disabled} className="dpad-btn left" label="Izquierda">
             <Arrow rotate={-90} />
           </PadButton>
-          <span className="dpad-hub" aria-hidden="true" />
+          <span className="dpad-hub" aria-hidden="true">
+            <span className="dpad-gem" />
+          </span>
           <PadButton code={keyMap.right} disabled={disabled} className="dpad-btn right" label="Derecha">
             <Arrow rotate={90} />
           </PadButton>
@@ -145,10 +148,12 @@ export default function MobileGamepad({
 
         <div className="face-btns">
           <PadButton code={keyMap.b} disabled={disabled} className="face-btn b" label="Botón B">
-            B
+            <span className="face-ring" aria-hidden="true" />
+            <span className="face-letter">B</span>
           </PadButton>
           <PadButton code={keyMap.a} disabled={disabled} className="face-btn a" label="Botón A">
-            A
+            <span className="face-ring" aria-hidden="true" />
+            <span className="face-letter">A</span>
           </PadButton>
         </div>
       </div>

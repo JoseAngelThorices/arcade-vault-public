@@ -914,27 +914,51 @@
     background: var(--green); box-shadow: 0 0 6px var(--green);
   }
 
-  /* SPEC 10: gamepad virtual de los reproductores en móvil. Es la mitad de
-     abajo de la carcasa del CRT (mismo material, bisel y radio): D-pad en cruz
-     a la izquierda, A/B en diagonal a la derecha, pausa y skin debajo. La
-     visibilidad la decide `md:hidden` en el componente. */
+  /* SPEC 10 + SPEC 11: gamepad virtual de los reproductores en móvil, con el
+     aspecto neón de references/gamepad-assets/: carcasa oscura con halo cyan y
+     trama de puntos, D-pad de teclas en relieve con gema en el centro, A/B
+     circulares en fila y pausa y skin debajo. La visibilidad la decide
+     `md:hidden` en el componente; el estado pulsado, `data-pressed`. */
   .gamepad {
-    --pad: clamp(44px, 13vw, 56px);   /* lado de cada brazo del D-pad */
+    --pad: clamp(44px, 13vw, 56px);   /* lado de cada tecla del D-pad */
     --face: clamp(54px, 16vw, 68px);  /* diámetro de A y B */
+    position: relative;
     display: grid;
     gap: 14px;
     margin-top: 14px;
     padding: 16px 14px 14px;
-    border-radius: 20px;
-    background: #050507;
-    box-shadow: 0 0 0 6px #1b1b22, 0 0 0 7px #2a2a35;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: linear-gradient(180deg, #1c1c28 0%, #0c0c14 100%);
+    box-shadow:
+      0 30px 80px -30px rgba(0,245,255,0.4),
+      0 0 0 1px rgba(255,255,255,0.02),
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 -2px 0 rgba(0,0,0,0.6);
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
   }
+  /* Filo interior y trama de puntos: decoración por debajo de los controles. */
+  .gamepad::before {
+    content: ""; position: absolute; inset: 4px;
+    border: 1px solid rgba(0,245,255,0.14);
+    border-radius: 18px;
+    pointer-events: none;
+  }
+  .gamepad::after {
+    content: ""; position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 8px 8px;
+    border-radius: inherit;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .gamepad > * { position: relative; z-index: 1; }
   .gamepad-controls {
     display: flex; align-items: center; justify-content: space-between;
     gap: 12px;
+    padding: 6px 4px;
   }
 
   .dpad {
@@ -942,6 +966,7 @@
     grid-template-columns: repeat(3, var(--pad));
     grid-template-rows: repeat(3, var(--pad));
     grid-template-areas: ". up ." "left hub right" ". down .";
+    gap: 3px;
   }
   .dpad-btn,
   .face-btn {
@@ -950,57 +975,115 @@
     cursor: pointer;
     touch-action: none;
     -webkit-tap-highlight-color: transparent;
-    transition: box-shadow 80ms, color 80ms, background-color 80ms, transform 80ms;
   }
   .dpad-btn {
-    background: var(--bg-3);
-    border: 1px solid var(--line);
-    color: var(--cyan);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    background: linear-gradient(180deg, #1a1a25, #0a0a12);
+    color: var(--ink-dim);
+    box-shadow:
+      0 4px 0 #050507,
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 -2px 4px rgba(0,0,0,0.6);
+    transition: transform 80ms, box-shadow 140ms, color 140ms, border-color 140ms, background 140ms;
   }
-  .dpad-btn.up    { grid-area: up;    border-bottom: 0; border-radius: 6px 6px 0 0; }
-  .dpad-btn.down  { grid-area: down;  border-top: 0;    border-radius: 0 0 6px 6px; }
-  .dpad-btn.left  { grid-area: left;  border-right: 0;  border-radius: 6px 0 0 6px; }
-  .dpad-btn.right { grid-area: right; border-left: 0;   border-radius: 0 6px 6px 0; }
+  .dpad-btn svg { transition: filter 140ms; }
+  .dpad-btn.up    { grid-area: up; }
+  .dpad-btn.down  { grid-area: down; }
+  .dpad-btn.left  { grid-area: left; }
+  .dpad-btn.right { grid-area: right; }
+  .dpad-btn[data-pressed] {
+    transform: translateY(3px);
+    color: var(--cyan);
+    border-color: var(--cyan);
+    background: linear-gradient(180deg, #08161e, #030a0e);
+    box-shadow:
+      0 1px 0 #050507,
+      inset 0 0 16px rgba(0,245,255,0.45),
+      0 0 16px rgba(0,245,255,0.5);
+  }
+  .dpad-btn[data-pressed] svg {
+    filter: drop-shadow(0 0 6px var(--cyan)) drop-shadow(0 0 12px var(--cyan));
+  }
   .dpad-hub {
     grid-area: hub;
-    background: var(--bg-3);
-    border-block: 1px solid transparent;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid rgba(0,245,255,0.15);
+    border-radius: 6px;
+    background: radial-gradient(circle at 50% 50%, #181822 0%, #08080d 80%);
+    box-shadow: inset 0 0 12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.04);
   }
-  .dpad-btn[data-pressed] {
-    background: rgba(0,245,255,0.14);
-    box-shadow: inset 0 0 12px rgba(0,245,255,0.45);
+  .dpad-gem {
+    width: 12px; height: 12px;
+    background: var(--cyan);
+    box-shadow: 0 0 10px var(--cyan), inset 0 0 4px rgba(0,0,0,0.5);
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+    animation: pulse-led 2s ease-in-out infinite;
+  }
+  @keyframes pulse-led { 50% { opacity: 0.35; transform: scale(0.85); } }
+  @media (prefers-reduced-motion: reduce) {
+    .dpad-gem { animation: none; }
   }
 
   .face-btns {
-    position: relative;
-    width: calc(var(--face) * 2 + 8px);
-    height: calc(var(--face) * 1.6);
+    display: flex; align-items: center;
+    gap: clamp(12px, 4vw, 20px);
+    padding-right: 4px;
   }
   .face-btn {
-    position: absolute;
+    position: relative;
     width: var(--face); height: var(--face);
     border-radius: 50%;
     border: 2px solid currentColor;
-    background: var(--bg-2);
+    background:
+      radial-gradient(circle at 32% 26%, rgba(255,255,255,0.25), transparent 50%),
+      radial-gradient(circle at 50% 55%, var(--ab-mid), var(--ab-deep) 75%);
+    box-shadow:
+      0 6px 0 #050507,
+      0 0 22px var(--ab-glow),
+      inset 0 1px 0 rgba(255,255,255,0.18),
+      inset 0 -4px 8px rgba(0,0,0,0.4);
+    transition: transform 80ms, box-shadow 140ms;
+  }
+  .face-btn.a {
+    color: var(--magenta);
+    --ab-mid: rgba(255,0,110,0.7); --ab-deep: rgba(110,0,40,0.95); --ab-glow: rgba(255,0,110,0.4);
+  }
+  .face-btn.b {
+    color: var(--cyan);
+    --ab-mid: rgba(0,200,230,0.7); --ab-deep: rgba(0,50,70,0.95); --ab-glow: rgba(0,245,255,0.4);
+  }
+  .face-letter {
+    position: relative; z-index: 2;
     font-family: var(--pixel);
-    font-size: 14px;
+    font-size: clamp(16px, 5vw, 20px);
+    color: #fff;
+    text-shadow: 0 0 8px currentColor, 0 0 18px currentColor, 0 1px 0 rgba(0,0,0,0.6);
   }
-  .face-btn.b { left: 0; bottom: 0; color: var(--yellow); }
-  .face-btn.a { right: 0; top: 0; color: var(--magenta); }
-  .face-btn.b[data-pressed] {
-    transform: scale(0.94);
-    box-shadow: 0 0 18px rgba(245,255,0,0.6), inset 0 0 12px rgba(245,255,0,0.4);
+  .face-btn.a .face-letter { text-shadow: 0 0 8px var(--magenta), 0 0 18px var(--magenta), 0 1px 0 rgba(0,0,0,0.6); }
+  .face-btn.b .face-letter { text-shadow: 0 0 8px var(--cyan), 0 0 18px var(--cyan), 0 1px 0 rgba(0,0,0,0.6); }
+  .face-ring {
+    position: absolute; inset: -8px;
+    border-radius: 50%;
+    border: 1px dashed currentColor;
+    opacity: 0;
+    transition: opacity 140ms, transform 200ms;
   }
-  .face-btn.a[data-pressed] {
-    transform: scale(0.94);
-    box-shadow: 0 0 18px rgba(255,0,110,0.6), inset 0 0 12px rgba(255,0,110,0.4);
+  .face-btn[data-pressed] {
+    transform: translateY(4px) scale(0.97);
+    box-shadow: 0 1px 0 #050507, 0 0 36px var(--ab-glow), inset 0 0 18px rgba(0,0,0,0.5);
   }
+  .face-btn[data-pressed] .face-ring { opacity: 1; transform: scale(1.08); }
 
   /* Sin tecla asignada o con la partida terminada: presentes pero apagados,
      para que el layout no cambie entre juegos. */
   .dpad-btn:disabled,
   .face-btn:disabled { color: var(--ink-faint); cursor: default; }
-  .face-btn:disabled { border-color: var(--line-2); }
+  .face-btn:disabled {
+    --ab-mid: #1a1a25; --ab-deep: #0a0a12; --ab-glow: transparent;
+    border-color: var(--line-2);
+  }
+  .face-btn:disabled .face-letter { color: var(--ink-faint); text-shadow: none; }
 
   /* PAUSA, FIN y skin en una sola fila, con botones compactos para que quepa
      en 360 px. La etiqueta "Skin" queda solo para lectores de pantalla: el
@@ -1009,7 +1092,7 @@
     display: flex; align-items: center; justify-content: space-between;
     gap: 8px;
     padding-top: 12px;
-    border-top: 1px solid var(--line-2);
+    border-top: 1px solid rgba(0,245,255,0.14);
   }
   .gamepad-actions { display: flex; gap: 8px; }
   .gamepad-system .btn { padding: 10px 12px; font-size: 9px; letter-spacing: 0.12em; }
