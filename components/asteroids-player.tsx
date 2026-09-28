@@ -38,7 +38,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
   // Cambiarla remonta el canvas: partida nueva desde cero.
   const [run, setRun] = useState(0);
   // Cambiarla no remonta el canvas: el motor la lee en cada frame.
-  const [skin, setSkin] = useSkin(game.id);
+  const [skin, setSkin] = useSkin();
 
   const playerName = ready && user ? user.name : "INVITADO";
   const scoreName = name ?? playerName;

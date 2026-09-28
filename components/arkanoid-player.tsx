@@ -42,7 +42,7 @@ export default function ArkanoidPlayer({ game }: { game: GameRow }) {
   const [run, setRun] = useState(0);
   // Cambiarla no remonta el canvas: el motor la lee en cada frame. Sin nada
   // guardado, el juego arranca con su aspecto original.
-  const [skin, setSkin] = useSkin(game.id, "clasico");
+  const [skin, setSkin] = useSkin();
 
   const playerName = ready && user ? user.name : "INVITADO";
   const scoreName = name ?? playerName;
