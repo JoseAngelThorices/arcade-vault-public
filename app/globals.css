@@ -449,34 +449,154 @@
   /* ===== Cover art generators (pure CSS) ===== */
   .cover-bg { position: absolute; inset: 0; }
 
-  .cover-bricks { background:
-    repeating-linear-gradient(90deg, #ff006e 0 32px, #ffae00 32px 64px, #00f5ff 64px 96px, #00ff88 96px 128px) 0 0/100% 32px,
-    #15151f; }
-  .cover-bricks::after {
-    content: ""; position: absolute; inset: 0;
-    background: repeating-linear-gradient(0deg, transparent 0 32px, rgba(0,0,0,0.4) 32px 33px);
-  }
-
-  .cover-tetro { background: radial-gradient(circle at 50% 100%, #2a004a, #0a0a18); }
-  .cover-tetro::after {
+  /* Arkanoid: muro de 12x7 ladrillos con los colores de la skin RETRO (fila
+     gris arriba, verde abajo), algunos ya reventados, la Vaus y la bola.
+     Celda del muro = 8.3333% x 14.2857%; columna c en c/11, fila r en r/6. */
+  .cover-bricks { background: #0a0a0f; }
+  .cover-bricks::before {
     content: "";
     position: absolute;
-    inset: 20% 30% 0 30%;
+    top: 6%; left: 0; right: 0; height: 50%;
     background:
-      linear-gradient(#00f5ff,#00f5ff) 0 0/25% 33%,
-      linear-gradient(#ff006e,#ff006e) 25% 0/25% 33%,
-      linear-gradient(#f5ff00,#f5ff00) 50% 33%/25% 33%,
-      linear-gradient(#00ff88,#00ff88) 25% 66%/25% 33%,
-      linear-gradient(#ff7700,#ff7700) 50% 66%/25% 33%,
-      linear-gradient(#aa00ff,#aa00ff) 75% 33%/25% 33%;
+      /* juntas entre ladrillos, del color del fondo */
+      repeating-linear-gradient(90deg, transparent 0 calc(100% / 12 - 2px), #0a0a0f calc(100% / 12 - 2px) calc(100% / 12)),
+      repeating-linear-gradient(180deg, transparent 0 calc(100% / 7 - 2px), #0a0a0f calc(100% / 7 - 2px) calc(100% / 7)),
+      /* brillo del canto superior de cada ladrillo */
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.35) 0 2px, transparent 2px calc(100% / 7)),
+      /* huecos de ladrillos ya reventados */
+      linear-gradient(#0a0a0f,#0a0a0f) 27.273% 100%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 36.364% 100%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 36.364% 83.333%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 72.727% 100%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 81.818% 100%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 81.818% 83.333%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 81.818% 66.667%/8.3333% 14.2857%,
+      linear-gradient(#0a0a0f,#0a0a0f) 0% 100%/8.3333% 14.2857%,
+      /* filas: gris, rojo, amarillo, cian, magenta, rosa, verde */
+      linear-gradient(#7a7a7a,#7a7a7a) 0 0%/100% 14.2857%,
+      linear-gradient(#d92d2d,#d92d2d) 0 16.667%/100% 14.2857%,
+      linear-gradient(#d9c72d,#d9c72d) 0 33.333%/100% 14.2857%,
+      linear-gradient(#2dd9c7,#2dd9c7) 0 50%/100% 14.2857%,
+      linear-gradient(#c72dd9,#c72dd9) 0 66.667%/100% 14.2857%,
+      linear-gradient(#d92d8f,#d92d8f) 0 83.333%/100% 14.2857%,
+      linear-gradient(#3fd92d,#3fd92d) 0 100%/100% 14.2857%;
     background-repeat: no-repeat;
-    filter: drop-shadow(0 0 8px rgba(0,245,255,0.4));
-    image-rendering: pixelated;
+  }
+  .cover-bricks::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      /* bola cuadrada subiendo hacia el muro, con su estela */
+      linear-gradient(#f5ff00,#f5ff00) 62% 66%/8px 8px,
+      linear-gradient(rgba(245,255,0,0.4),rgba(245,255,0,0.4)) 57.5% 74%/6px 6px,
+      linear-gradient(rgba(245,255,0,0.18),rgba(245,255,0,0.18)) 53% 82%/4px 4px,
+      /* Vaus: bloque plano claro con los cantos blancos */
+      linear-gradient(90deg, #fff 0 6%, #e6e9ff 6% 94%, #fff 94%) 50% 93%/30% 5%;
+    background-repeat: no-repeat;
+  }
+
+  /* Tetris: tablero de 16x12 a toda la cover (celdas cuadradas en la card
+     4:3) con los colores de la skin RETRO: una pila con un hueco de cuatro en
+     la columna 12 y una I cayendo para hacer TETRIS.
+     Celda = 6.25% x 8.3333%; columna c en c/15, fila r en r/11. */
+  .cover-tetro { background: #1a1a25; }
+  .cover-tetro::before {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(90deg, #22222e 0 1px, transparent 1px 6.25%),
+      repeating-linear-gradient(180deg, #22222e 0 1px, transparent 1px calc(100% / 12)),
+      #1a1a25;
+  }
+  .cover-tetro::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      /* juntas entre bloques planos */
+      repeating-linear-gradient(90deg, #1a1a25 0 1px, transparent 1px 6.25%),
+      repeating-linear-gradient(180deg, #1a1a25 0 1px, transparent 1px calc(100% / 12)),
+      linear-gradient(#4dd0e1,#4dd0e1) 80% 9.091%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 80% 18.182%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 80% 27.273%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 80% 36.364%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 66.667% 54.545%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 73.333% 54.545%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 100% 54.545%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 0% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 26.667% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 33.333% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 40% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 66.667% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 73.333% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 93.333% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 100% 63.636%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 0% 72.727%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 6.667% 72.727%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 13.333% 72.727%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 26.667% 72.727%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 33.333% 72.727%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 40% 72.727%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 46.667% 72.727%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 53.333% 72.727%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 60% 72.727%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 66.667% 72.727%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 73.333% 72.727%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 86.667% 72.727%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 93.333% 72.727%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 100% 72.727%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 0% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 6.667% 81.818%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 13.333% 81.818%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 20% 81.818%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 26.667% 81.818%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 33.333% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 40% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 46.667% 81.818%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 53.333% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 60% 81.818%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 66.667% 81.818%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 73.333% 81.818%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 86.667% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 93.333% 81.818%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 100% 81.818%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 0% 90.909%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 6.667% 90.909%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 13.333% 90.909%/6.25% 8.3333%,
+      linear-gradient(#4dd0e1,#4dd0e1) 20% 90.909%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 26.667% 90.909%/6.25% 8.3333%,
+      linear-gradient(#e57373,#e57373) 33.333% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 40% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 46.667% 90.909%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 53.333% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 60% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 66.667% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 73.333% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 86.667% 90.909%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 93.333% 90.909%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 100% 90.909%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 0% 100%/6.25% 8.3333%,
+      linear-gradient(#ffd54f,#ffd54f) 6.667% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 13.333% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 20% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 26.667% 100%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 33.333% 100%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 40% 100%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 46.667% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 53.333% 100%/6.25% 8.3333%,
+      linear-gradient(#ba68c8,#ba68c8) 60% 100%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 66.667% 100%/6.25% 8.3333%,
+      linear-gradient(#81c784,#81c784) 73.333% 100%/6.25% 8.3333%,
+      linear-gradient(#ffb74d,#ffb74d) 86.667% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 93.333% 100%/6.25% 8.3333%,
+      linear-gradient(#90caf9,#90caf9) 100% 100%/6.25% 8.3333%,
+      /* sombra de la I en el hueco donde va a caer */
+      linear-gradient(rgba(77,208,225,0.25),rgba(77,208,225,0.25)) 80% 100%/6.25% 33.3333%;
+    background-repeat: no-repeat;
   }
 
   /* Tablero de 8x6 celdas dentro de inset 18% 14%: celda = 12.5% x 16.667% de
      la caja; la posicion de la columna c es c/7 y la de la fila r es r/5. */
-  .cover-snake { background: linear-gradient(135deg,#003a2a,#0a0a18); isolation: isolate; }
+  .cover-snake { background: #0a0a0f; isolation: isolate; }
   .cover-snake::after {
     content: "";
     position: absolute;
@@ -486,19 +606,18 @@
       linear-gradient(#0a0a0f,#0a0a0f) 71.8% 56.4%/2.5% 4%,
       linear-gradient(#0a0a0f,#0a0a0f) 71.8% 62.5%/2.5% 4%,
       /* cabeza en (5,3), mirando a la fruta */
-      linear-gradient(#9dffd0,#9dffd0) 71.429% 60%/12.5% 16.667%,
+      linear-gradient(#eafff0,#eafff0) 71.429% 60%/12.5% 16.667%,
       /* cuerpo: sube desde la cola en (0,1) y gira hacia la derecha */
-      linear-gradient(var(--green),var(--green)) 57.143% 60%/12.5% 16.667%,
-      linear-gradient(var(--green),var(--green)) 42.857% 60%/12.5% 16.667%,
-      linear-gradient(var(--green),var(--green)) 28.571% 60%/12.5% 16.667%,
-      linear-gradient(var(--green),var(--green)) 28.571% 40%/12.5% 16.667%,
-      linear-gradient(var(--green),var(--green)) 28.571% 20%/12.5% 16.667%,
-      linear-gradient(#00d474,#00d474) 14.286% 20%/12.5% 16.667%,
-      linear-gradient(#00a860,#00a860) 0% 20%/12.5% 16.667%,
+      linear-gradient(#2bd672,#2bd672) 57.143% 60%/12.5% 16.667%,
+      linear-gradient(#2bd672,#2bd672) 42.857% 60%/12.5% 16.667%,
+      linear-gradient(#2bd672,#2bd672) 28.571% 60%/12.5% 16.667%,
+      linear-gradient(#2bd672,#2bd672) 28.571% 40%/12.5% 16.667%,
+      linear-gradient(#2bd672,#2bd672) 28.571% 20%/12.5% 16.667%,
+      linear-gradient(#23b862,#23b862) 14.286% 20%/12.5% 16.667%,
+      linear-gradient(#1b9a51,#1b9a51) 0% 20%/12.5% 16.667%,
       /* fruta en (7,3) */
-      radial-gradient(circle closest-side, var(--magenta) 0 62%, transparent 66%) 100% 60%/12.5% 16.667%;
+      linear-gradient(#e2402c,#e2402c) 100% 60%/12.5% 16.667%;
     background-repeat: no-repeat;
-    filter: drop-shadow(0 0 6px rgba(0,255,136,0.6));
   }
   /* Cuadricula del tablero sobre toda la cover: separa los bloques de la
      serpiente, como en el canvas. Mosaico = una celda (72%/8 x 64%/6), fase
@@ -508,8 +627,8 @@
     position: absolute; inset: 0;
     z-index: 1;
     background:
-      linear-gradient(90deg, rgba(0,0,0,0.5) 2px, transparent 2px),
-      linear-gradient(180deg, rgba(0,0,0,0.5) 2px, transparent 2px);
+      linear-gradient(90deg, #1a1d2e 2px, transparent 2px),
+      linear-gradient(180deg, #1a1d2e 2px, transparent 2px);
     background-size: 9% 10.667%;
     background-position: 5.495% 8.209%;
   }
@@ -550,23 +669,22 @@
     filter: drop-shadow(0 0 6px rgba(0,255,136,0.6));
   }
 
-  .cover-rocas { background: radial-gradient(circle at 50% 50%, #0a0a30, #000); }
+  .cover-rocas { background: #0a0a0f; }
   .cover-rocas::after {
     content: "";
     position: absolute; inset: 0;
     background:
-      radial-gradient(circle at 22% 30%, #888 0 18px, transparent 19px),
-      radial-gradient(circle at 75% 60%, #aaa 0 26px, transparent 27px),
-      radial-gradient(circle at 50% 80%, #777 0 14px, transparent 15px),
-      radial-gradient(circle at 88% 22%, var(--cyan) 0 2px, transparent 3px),
-      radial-gradient(circle at 12% 70%, var(--cyan) 0 2px, transparent 3px),
-      radial-gradient(circle at 60% 20%, var(--cyan) 0 2px, transparent 3px);
+      radial-gradient(circle at 22% 30%, #4a4f70 0 15px, #9aa0c8 15px 18px, transparent 18px),
+      radial-gradient(circle at 75% 60%, #4a4f70 0 23px, #9aa0c8 23px 26px, transparent 26px),
+      radial-gradient(circle at 50% 80%, #4a4f70 0 11px, #9aa0c8 11px 14px, transparent 14px),
+      linear-gradient(#e6e9ff,#e6e9ff) 88% 22%/3px 3px no-repeat,
+      linear-gradient(#e6e9ff,#e6e9ff) 12% 70%/3px 3px no-repeat,
+      linear-gradient(#e6e9ff,#e6e9ff) 60% 20%/3px 3px no-repeat;
   }
   .cover-rocas::before {
     content: "▲";
     position: absolute; left: 48%; top: 44%;
-    color: var(--yellow); font-size: 22px;
-    text-shadow: 0 0 8px var(--yellow);
+    color: #e6e9ff; font-size: 22px;
   }
 
   .cover-rana { background: linear-gradient(180deg,#001f2a,#0a0a18); }
