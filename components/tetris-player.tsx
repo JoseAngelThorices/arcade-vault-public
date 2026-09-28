@@ -102,10 +102,10 @@ export default function TetrisPlayer({ game }: { game: GameRow }) {
             <div className="l">Nivel</div>
             <div className="v">{String(level).padStart(2, "0")}</div>
           </div>
+          <SkinPicker skin={skin} onChange={setSkin} />
         </div>
 
         <div className="hud-actions">
-          <SkinPicker skin={skin} onChange={setSkin} />
           <button className="btn yellow" onClick={() => setPaused((p) => !p)} disabled={over}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>

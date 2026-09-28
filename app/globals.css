@@ -702,26 +702,26 @@
   .hud-stat.level .v { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
   .hud-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
-  /* Selector de skin del reproductor: tres segmentos, el activo encendido
-     con el acento de su skin. */
-  .skin-picker { display: flex; border: 1px solid var(--line); }
-  .skin-opt {
-    padding: 10px 12px;
+  /* Selector de skin del reproductor: un desplegable que ocupa un hueco mas
+     del HUD, bajo su etiqueta "SKIN" como las demas estadisticas. */
+  .skin-select {
+    appearance: none;
+    color-scheme: dark;
+    min-width: 150px;
+    padding: 4px 30px 4px 10px;
     font-family: var(--pixel);
-    font-size: 9px;
-    letter-spacing: 0.14em;
-    background: transparent;
-    color: var(--ink-faint);
-    border: 0;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    background: var(--bg)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2300f5ff' stroke-width='1.5'/%3E%3C/svg%3E")
+      no-repeat right 10px center;
+    border: 1px solid var(--ink-dim);
     cursor: pointer;
-    transition: color 160ms, background 160ms, text-shadow 160ms;
+    transition: border-color 160ms, box-shadow 160ms;
   }
-  .skin-opt + .skin-opt { border-left: 1px solid var(--line); }
-  .skin-opt:hover { color: var(--ink); }
-  .skin-opt:focus-visible { outline: 1px solid var(--cyan); outline-offset: -3px; }
-  .skin-opt[aria-pressed="true"].skin-neon { color: var(--cyan); background: rgba(0,245,255,0.1); text-shadow: 0 0 6px rgba(0,245,255,0.7); }
-  .skin-opt[aria-pressed="true"].skin-retro { color: var(--yellow); background: rgba(245,255,0,0.08); }
-  .skin-opt[aria-pressed="true"].skin-clasico { color: #fff; background: rgba(255,255,255,0.08); }
+  .skin-select:hover { border-color: var(--cyan); }
+  .skin-select:focus-visible { outline: none; border-color: var(--cyan); box-shadow: 0 0 10px rgba(0,245,255,0.45); }
 
   .crt {
     position: relative;

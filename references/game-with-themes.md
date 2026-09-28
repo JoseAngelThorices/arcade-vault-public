@@ -21,7 +21,7 @@ Leyenda: `✅` cumple · `🟡` parcial · `❌` no cumple · `—` sin auditar
 ### `asteroids`
 
 - NEÓN / RETRO / CLÁSICO: ✅ — tabla `PALETTES: Record<Skin, Palette>` en `components/games/asteroids-game.tsx`, leída en cada frame vía `pal()` desde `skinRef`. NEÓN: paleta neón con `shadowBlur`; RETRO: formas rellenas, borde superior claro en asteroides, balas y partículas de 3×3 px; CLÁSICO: trazo blanco monocromo sobre `#000000`, power-ups en `#c8c8c8`.
-- Selector: ✅ — `.skin-picker` con NEÓN / RETRO / CLÁSICO y `aria-pressed` en `components/asteroids-player.tsx`; estilos en `app/globals.css` (`.skin-picker`, `.skin-opt`).
+- Selector: ✅ — desplegable `SkinPicker` (`components/skin-picker.tsx`) con NEÓN / RETRO / CLÁSICO, como un hueco más del HUD bajo la etiqueta "SKIN"; compartido por los cuatro reproductores. Estilos en `app/globals.css` (`.skin-select`).
 - Persistencia: ✅ — `useSkin(game.id)` de `lib/skins.ts` lee y escribe `av_skin_asteroids` con `useSyncExternalStore` y `try/catch`; por defecto `clasico`.
 
 ### `tetris`
@@ -83,6 +83,7 @@ Reutilizar tal cual `lib/skins.ts` (ya existe: `Skin`, `SKINS`, `DEFAULT_SKIN`, 
 
 | Fecha | Alcance | Resumen |
 | ----- | ------- | ------- |
+| 2026-09-28 | todos | El selector pasa de tres botones en la barra de acciones a un desplegable "SKIN" dentro de las estadísticas del HUD. |
 | 2026-09-28 | `tetris`, `snake`, `arkanoid` | Implementadas las tres skins según la propuesta, con `SkinPicker` (`components/skin-picker.tsx`) y `useSkin(id, fallback)` de `lib/skins.ts`. Sin nada guardado cada juego arranca con su aspecto original (Tetris RETRO, Snake NEÓN, Arkanoid CLÁSICO). Tetris sin animación de limpieza de líneas; Arkanoid comparte las explosiones del spritesheet en las tres skins. |
 | 2026-09-28 | `asteroids` | Primera auditoría: sin sistema de skins. Implementadas después las tres skins, el selector y la persistencia `av_skin_asteroids` (`lib/skins.ts`); matriz en ✅. |
 | 2026-09-28 | `snake` | Sin sistema de skins: motor con un único estilo neón fijo (glow verde `--green`, candidato a NEÓN pero no nombrado ni seleccionable), sin variante RETRO ni CLÁSICO, sin selector en el reproductor ni persistencia `av_skin_snake`. `lib/skins.ts` ya existe y es reutilizable sin cambios. Propuesta de paleta NEÓN (formalizada)/RETRO/CLÁSICO (LCD monocromo) documentada. |
