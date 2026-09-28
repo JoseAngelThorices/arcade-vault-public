@@ -327,17 +327,16 @@ function startGame(
   const BOOST_THRUST = 2.2; // multiplicador de aceleración (y de velocidad máx.)
   const BOOST_ROT = 1.25; // multiplicador de giro con el propulsor mejorado
 
-  // Catálogo de tipos. `duration` 0 = efecto instantáneo al recogerlo.
+  // Catálogo de tipos, todos temporales (`duration` en segundos).
   // Cada ronda cae uno de cada tipo, en orden aleatorio.
   const POWERUP_TYPES = {
     triple: { duration: 10, color: "#4dd8ff", label: "TRIPLE" },
     slow: { duration: 6, color: "#b07dff", label: "LENTO" },
     boost: { duration: 8, color: "#9dff5c", label: "TURBO" },
     shield: { duration: 5, color: "#ffd24d", label: "ESCUDO" },
-    bomb: { duration: 0, color: "#ff5c4d", label: "BOMBA" },
   };
   type PowerUpType = keyof typeof POWERUP_TYPES;
-  type EffectType = Exclude<PowerUpType, "bomb">;
+  type EffectType = PowerUpType;
 
   // Color de un power-up en la skin activa (CLÁSICO los pinta todos en gris)
   const powerupColor = (type: PowerUpType) => pal().powerup ?? POWERUP_TYPES[type].color;
@@ -471,18 +470,6 @@ function startGame(
         }
         return;
       }
-
-      // bomb: núcleo sólido con estallido radial
-      ctx.beginPath();
-      ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      for (let i = 0; i < 6; i++) {
-        const a = (i / 6) * Math.PI * 2;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * 5.5, Math.sin(a) * 5.5);
-        ctx.lineTo(Math.cos(a) * 9.5, Math.sin(a) * 9.5);
-        ctx.stroke();
-      }
     }
   }
 
@@ -527,6 +514,7 @@ function startGame(
       const ROT = 3.5 * (boost ? BOOST_ROT : 1); // rad/s
       const THRUST = 260 * (boost ? BOOST_THRUST : 1); // px/s²
       const DRAG = 0.987;
+      const REVERSE = 0.6; // fracción del empuje en marcha atrás
 
       if (keys["ArrowLeft"]) this.angle -= ROT * dt;
       if (keys["ArrowRight"]) this.angle += ROT * dt;
@@ -535,6 +523,11 @@ function startGame(
       if (this.thrusting) {
         this.vx += Math.cos(this.angle) * THRUST * dt;
         this.vy += Math.sin(this.angle) * THRUST * dt;
+      }
+      // Marcha atrás: empuje en sentido contrario al morro, más flojo que el propulsor
+      if (keys["ArrowDown"]) {
+        this.vx -= Math.cos(this.angle) * THRUST * REVERSE * dt;
+        this.vy -= Math.sin(this.angle) * THRUST * REVERSE * dt;
       }
 
       this.vx *= DRAG;
@@ -674,7 +667,7 @@ function startGame(
   let pendingDrops: PowerUpType[]; // tipos que aún tienen que caer en esta ronda (uno de cada)
   let pendingKills: number; // destrucciones que quedan en el nivel (garantiza las caídas)
   let effects: Record<EffectType, number>; // segundos restantes de cada efecto temporal
-  let flash: number; // destello blanco de la bomba
+  let flash: number; // destello blanco al gastar el escudo
   let score: number;
   let lives: number;
   let level: number;
@@ -698,7 +691,7 @@ function startGame(
       } while (Math.hypot(x - W / 2, y - H / 2) < SAFE_DIST);
       asteroids.push(new Asteroid(x, y, 3));
     }
-    // Arranque de ronda: vuelven a estar pendientes los cinco tipos, en orden
+    // Arranque de ronda: vuelven a estar pendientes los cuatro tipos, en orden
     // aleatorio, y se recuentan las destrucciones que quedan para garantizarlos.
     pendingDrops = shuffle(Object.keys(POWERUP_TYPES) as PowerUpType[]);
     pendingKills = count * killsFor(3);
@@ -724,7 +717,7 @@ function startGame(
     bullets = [];
     particles = [];
     // Nivel limpio: desaparecen los power-ups sin recoger y se cortan los
-    // efectos activos. spawnAsteroids() vuelve a dejar pendientes los cinco
+    // efectos activos. spawnAsteroids() vuelve a dejar pendientes los cuatro
     // tipos, que caen de nuevo al destruir las rocas del nivel nuevo.
     powerups = [];
     clearEffects();
@@ -736,29 +729,9 @@ function startGame(
     for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
   }
 
-  // Aplica el efecto de un power-up recogido: temporal o instantáneo.
+  // Aplica el efecto de un power-up recogido; recogerlo de nuevo reinicia el contador.
   function applyPowerUp(type: PowerUpType) {
-    if (type !== "bomb") {
-      effects[type] = POWERUP_TYPES[type].duration; // recogerlo de nuevo reinicia el contador
-      return;
-    }
-    // bomb: arrasa con todos los asteroides visibles en ese instante, sin partirlos
-    const restos = asteroids.slice();
-    for (const a of restos) {
-      score += POINTS[a.size];
-      explode(a.x, a.y, a.size * 5);
-    }
-    asteroids = [];
-    flash = 0.3;
-
-    // Al vaciar la pantalla ya no quedan destrucciones que suelten lo pendiente,
-    // así que los tipos que faltaban por caer esta ronda aparecen ahora.
-    while (pendingDrops.length > 0) {
-      const a = restos[pendingDrops.length % restos.length];
-      const x = a ? a.x : rand(0, W);
-      const y = a ? a.y : rand(0, H);
-      powerups.push(new PowerUp(x, y, pendingDrops.shift()!));
-    }
+    effects[type] = POWERUP_TYPES[type].duration;
   }
 
   function killShip() {
@@ -830,7 +803,7 @@ function startGame(
           newAsteroids.push(...a.split());
           // Suelta como mucho un power-up por destrucción, en el orden barajado
           // de la ronda. La probabilidad crece según se agotan las destrucciones
-          // que quedan, así que los cinco tipos salen sí o sí antes de acabarla.
+          // que quedan, así que los cuatro tipos salen sí o sí antes de acabarla.
           pendingKills--;
           if (pendingDrops.length > 0) {
             const chance = Math.max(DROP_CHANCE, pendingDrops.length / Math.max(pendingKills, 1));
@@ -927,7 +900,7 @@ function startGame(
     ship.draw();
     drawShield();
 
-    // Destello de la bomba, se desvanece con su temporizador
+    // Destello del escudo, se desvanece con su temporizador
     if (flash > 0) {
       ctx.fillStyle = `rgba(255,255,255,${((flash / 0.3) * 0.55).toFixed(2)})`;
       ctx.fillRect(0, 0, W, H);

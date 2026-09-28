@@ -27,7 +27,7 @@ const AsteroidsGame = dynamic(() => import("@/components/games/asteroids-game"),
 });
 
 // Teclas del motor para cada boton del gamepad; B no tiene accion en Asteroids.
-const KEY_MAP: KeyMap = { up: "ArrowUp", left: "ArrowLeft", right: "ArrowRight", a: "Space" };
+const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", a: "Space" };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -149,7 +149,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
         <div className="crt-bottom">
           <span className="led">SEÑAL OK</span>
           <span>{game.title} · CRT-83 · 60 HZ</span>
-          <span>← ↑ → MOVER · ESPACIO DISPARAR</span>
+          <span>← ↑ ↓ → MOVER · ESPACIO DISPARAR</span>
         </div>
       </div>
 
