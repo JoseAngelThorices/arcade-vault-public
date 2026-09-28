@@ -1,6 +1,6 @@
 # SPEC 11 — Apariencia neón del gamepad móvil
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 10-mobile-touch-controls
 > **Fecha:** 2026-09-28
 > **Objetivo:** Rediseñar la apariencia del gamepad virtual de SPEC 10
@@ -72,18 +72,18 @@ cargada con `next/font` en `app/layout.tsx`.
 
 ## Criterios de aceptación
 
-- [ ] La carcasa muestra fondo degradado oscuro, borde y halo cyan y trama de puntos,
+- [x] La carcasa muestra fondo degradado oscuro, borde y halo cyan y trama de puntos,
       como en `references/gamepad-assets/gamepad-neon.png`.
-- [ ] Cada tecla del D-pad es una pieza separada con degradado, esquinas redondeadas y flecha SVG.
-- [ ] Al pulsar una tecla del D-pad se hunde (`translateY(3px)`) y se ilumina en cyan.
-- [ ] El hub central muestra la gema cyan pulsante.
-- [ ] A y B son circulares, uno al lado del otro, con letra pixel y glow magenta (A) / cyan (B).
-- [ ] Al pulsar A o B se hunden (`translateY(4px)`) con glow ampliado.
-- [ ] Los botones sin tecla asignada o con la partida terminada se ven apagados.
-- [ ] La fila inferior (PAUSA/REANUDAR, FIN, skin) sigue igual y encaja con la carcasa.
-- [ ] `MobileGamepadProps` no cambia; ningún reproductor se modifica.
-- [ ] El gamepad sigue oculto en ≥ 768 px y cabe sin scroll horizontal a 360 px.
-- [ ] `npm run lint`, `npx tsc --noEmit` y `npm run build` pasan sin errores.
+- [x] Cada tecla del D-pad es una pieza separada con degradado, esquinas redondeadas y flecha SVG.
+- [x] Al pulsar una tecla del D-pad se hunde (`translateY(3px)`) y se ilumina en cyan.
+- [x] El hub central muestra la gema cyan pulsante.
+- [x] A y B son circulares, uno al lado del otro, con letra pixel y glow magenta (A) / cyan (B).
+- [x] Al pulsar A o B se hunden (`translateY(4px)`) con glow ampliado.
+- [x] Los botones sin tecla asignada o con la partida terminada se ven apagados.
+- [x] La fila inferior (PAUSA/REANUDAR, FIN, skin) sigue igual y encaja con la carcasa.
+- [x] `MobileGamepadProps` no cambia; ningún reproductor se modifica.
+- [x] El gamepad sigue oculto en ≥ 768 px y cabe sin scroll horizontal a 360 px.
+- [x] `npm run lint`, `npx tsc --noEmit` y `npm run build` pasan sin errores.
 
 ---
 
