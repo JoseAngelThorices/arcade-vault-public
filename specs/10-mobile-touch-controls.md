@@ -1,6 +1,6 @@
 # SPEC 10 — Controles táctiles para dispositivos móviles
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 05-asteroids-game, 07-tetris-game, 08-arkanoid-game, 09-snake-game
 > **Fecha:** 2026-09-28
 > **Objetivo:** Añadir un gamepad virtual táctil y un layout adaptado a los cuatro juegos
@@ -14,7 +14,7 @@
 **Dentro:**
 
 - Crear `components/mobile-gamepad.tsx`: componente `"use client"` reutilizable con D-pad
-  (4 flechas), dos botones de acción (A, B), botón PAUSA y selector de skin. Solo visible
+  (4 flechas), dos botones de acción (A, B), botones PAUSA y FIN y selector de skin. Solo visible
   en `< md` (< 768 px) mediante Tailwind (`md:hidden`).
 - Cada pulsación despacha un `KeyboardEvent` sintético en `document` con `code` **y** `key`
   (`new KeyboardEvent("keydown", { code, key, bubbles: true })`) y su `keyup` al soltar.
@@ -29,7 +29,9 @@
     canvas ya escalan al ancho de `.crt-screen` (4:3); solo hay que reducir paddings y
     bordes del marco con CSS en `app/globals.css`.
   - Renderizar `<MobileGamepad>` debajo del CRT, con el `keyMap` del juego, `paused`, el
-    toggle de pausa, la skin y su setter.
+    toggle de pausa, `openGameOver` como acción de FIN, la skin y su setter.
+  - En `< md`, apilar el contenido del modal de fin de partida (campo de nombre, GUARDAR y
+    botones a todo el ancho) para que nada se salga de su marco.
 - Mapeo de botones por juego (códigos que los motores ya aceptan):
   - **Asteroids:** ↑ `ArrowUp` (empuje mientras se mantiene), ← `ArrowLeft`,
     → `ArrowRight` | A `Space` (disparar) | B sin acción.
@@ -46,7 +48,7 @@
 - Hiperespacio en Asteroids: el motor no lo tiene; añadirlo sería otro spec.
 - Soporte táctil para juegos futuros: cada spec de juego define su `keyMap`.
 - Gestos swipe o joystick analógico.
-- Botones FIN / SALIR en el gamepad: el jugador móvil sale con la navegación del navegador.
+- Botón SALIR en el gamepad: el jugador móvil sale con la navegación del navegador.
 - Orientación landscape: solo portrait.
 - Vibración háptica.
 - Mostrar puntuación/vidas en móvil (el HUD se oculta entero; el modal de fin de partida
@@ -76,6 +78,7 @@ interface MobileGamepadProps {
   paused: boolean;
   disabled?: boolean; // true con la partida terminada
   onPauseToggle: () => void;
+  onEnd: () => void; // FIN: termina la partida y abre el modal, como en escritorio
   skin: Skin;
   onSkinChange: (skin: Skin) => void;
 }
@@ -114,8 +117,8 @@ const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", r
 
 1. **Crear `components/mobile-gamepad.tsx`** y sus estilos en `app/globals.css`
    - Layout: fila superior con el D-pad en cruz a la izquierda y A/B a la derecha; fila
-     inferior con PAUSA/REANUDAR y el selector de skin, reutilizando
-     `components/skin-picker.tsx`.
+     inferior con PAUSA/REANUDAR, FIN y el selector de skin, reutilizando
+     `components/skin-picker.tsx`, todo en una sola fila con botones compactos.
    - Eventos con Pointer Events: `onPointerDown` despacha `keydown`; `onPointerUp`,
      `onPointerCancel` y `onPointerLeave` despachan `keyup` (necesario para el empuje
      continuo de Asteroids y para no dejar teclas "pegadas"). Se usa
@@ -166,6 +169,9 @@ const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", r
 - [ ] Tocar los botones no hace scroll ni zoom de la página.
 - [ ] PAUSA del gamepad pausa y reanuda en los cuatro juegos; con la partida terminada el
       gamepad está deshabilitado.
+- [ ] FIN del gamepad termina la partida y abre el modal de fin de partida en los cuatro
+      juegos.
+- [ ] En móvil el modal de fin de partida cabe entero dentro de su marco.
 - [ ] El selector de skin del gamepad cambia la skin del juego activo.
 - [ ] En escritorio, HUD, teclado y ratón funcionan igual que antes.
 - [ ] `npm run lint`, `npx tsc --noEmit` y `npm run build` completan sin errores.
@@ -184,7 +190,23 @@ const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", r
 - **Sí: D-pad visual + 2 botones**, en lugar de swipe o joystick: más precisión para
   pulsaciones discretas.
 - **Sí: `md` (768 px) como breakpoint**, estándar de Tailwind.
-- **Sí: PAUSA y selector de skin en el gamepad**; FIN y SALIR se excluyen para simplificar.
+- **Sí: PAUSA, FIN y selector de skin en el gamepad**; SALIR se excluye (se sale con la
+  navegación del navegador). FIN se añadió durante la implementación: sin él, en móvil no
+  había forma de terminar la partida y guardar la puntuación antes de perder.
+- **Sí: modal de fin de partida apilado en móvil.** Al probarlo en móvil, el botón GUARDAR
+  PUNTUACIÓN se salía del marco del modal; en `< md` el campo y los botones se apilan a
+  todo el ancho.
+- **Sí: pantalla del juego lo más grande posible en móvil.** El reproductor con gamepad
+  reduce el margen lateral a 8 px y el marco del CRT a 6 px, y la carcasa del gamepad es
+  más baja, con PAUSA, FIN y skin en una sola fila (la etiqueta "Skin" queda solo para
+  lectores de pantalla).
+- **Sí: reproductor a pantalla completa en móvil.** En los reproductores con gamepad se
+  ocultan el pie de página del sitio y el pie del CRT (sus atajos son de teclado); el
+  reproductor ocupa todo el alto (`100dvh`) y el gamepad queda abajo. El CRT crece hasta
+  llenar el alto libre, pegado al gamepad: la pantalla deja de ser 4:3 (mínimo 4:3 al
+  ancho) y el canvas se escala dentro con `object-fit: contain`, así que cuanto más alto
+  el móvil, más grande la pantalla (Tetris, vertical, gana tamaño real; los juegos
+  horizontales ya ocupan todo el ancho y quedan centrados).
 - **Sí: reutilizar `SkinPicker`** en lugar de duplicar el selector.
 - **Sí: cambios en `components/<id>-player.tsx`**, no en `app/jugar/<id>/page.tsx`: el
   HUD y el estado de pausa/skin viven en los reproductores.
