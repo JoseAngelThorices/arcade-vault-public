@@ -50,6 +50,7 @@ Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `
 Agentes del proyecto (en `.claude/agents/`):
 
 - **`@game-planner`** — planifica qué juego construir a continuación. Lee `implemented-games.md`, las carpetas reales de los juegos, `specs/` y su to-do, y propone de 1 a 3 candidatos ordenados por diversidad de categorías, factibilidad en canvas 2D y reconocimiento clásico. Nunca repite un juego que ya esté en el to-do. Su memoria persistente es `references/game-suggestions-todo.md` (Sugeridos / Aceptados / Implementados / Descartados); solo escribe ese fichero y nunca escribe código ni specs. Flujo típico: `@game-planner` → elegir candidato → `/add-game` → `/spec-impl`.
+- **`@game-jam`** — a partir de un tema, diseña un juego nuevo sin hacer preguntas y escribe al menos dos specs (`01-<id>-core.md` + `02-<id>-<feature>.md`) en `specs/game-jam/<id>/`, en estado `Borrador`. Nunca escribe código. `/spec-impl` solo busca en `specs/`, así que para implementar un spec hay que promocionarlo antes a `specs/NN-<slug>.md`.
 
 Implementa los specs paso a paso: termina un paso, para y pregunta antes del siguiente.
 
