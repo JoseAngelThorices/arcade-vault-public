@@ -914,6 +914,179 @@
     background: var(--green); box-shadow: 0 0 6px var(--green);
   }
 
+  /* SPEC 10: gamepad virtual de los reproductores en móvil. Es la mitad de
+     abajo de la carcasa del CRT (mismo material, bisel y radio): D-pad en cruz
+     a la izquierda, A/B en diagonal a la derecha, pausa y skin debajo. La
+     visibilidad la decide `md:hidden` en el componente. */
+  .gamepad {
+    --pad: clamp(44px, 13vw, 56px);   /* lado de cada brazo del D-pad */
+    --face: clamp(54px, 16vw, 68px);  /* diámetro de A y B */
+    display: grid;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 16px 14px 14px;
+    border-radius: 20px;
+    background: #050507;
+    box-shadow: 0 0 0 6px #1b1b22, 0 0 0 7px #2a2a35;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .gamepad-controls {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px;
+  }
+
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, var(--pad));
+    grid-template-rows: repeat(3, var(--pad));
+    grid-template-areas: ". up ." "left hub right" ". down .";
+  }
+  .dpad-btn,
+  .face-btn {
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: box-shadow 80ms, color 80ms, background-color 80ms, transform 80ms;
+  }
+  .dpad-btn {
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    color: var(--cyan);
+  }
+  .dpad-btn.up    { grid-area: up;    border-bottom: 0; border-radius: 6px 6px 0 0; }
+  .dpad-btn.down  { grid-area: down;  border-top: 0;    border-radius: 0 0 6px 6px; }
+  .dpad-btn.left  { grid-area: left;  border-right: 0;  border-radius: 6px 0 0 6px; }
+  .dpad-btn.right { grid-area: right; border-left: 0;   border-radius: 0 6px 6px 0; }
+  .dpad-hub {
+    grid-area: hub;
+    background: var(--bg-3);
+    border-block: 1px solid transparent;
+  }
+  .dpad-btn[data-pressed] {
+    background: rgba(0,245,255,0.14);
+    box-shadow: inset 0 0 12px rgba(0,245,255,0.45);
+  }
+
+  .face-btns {
+    position: relative;
+    width: calc(var(--face) * 2 + 8px);
+    height: calc(var(--face) * 1.6);
+  }
+  .face-btn {
+    position: absolute;
+    width: var(--face); height: var(--face);
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    background: var(--bg-2);
+    font-family: var(--pixel);
+    font-size: 14px;
+  }
+  .face-btn.b { left: 0; bottom: 0; color: var(--yellow); }
+  .face-btn.a { right: 0; top: 0; color: var(--magenta); }
+  .face-btn.b[data-pressed] {
+    transform: scale(0.94);
+    box-shadow: 0 0 18px rgba(245,255,0,0.6), inset 0 0 12px rgba(245,255,0,0.4);
+  }
+  .face-btn.a[data-pressed] {
+    transform: scale(0.94);
+    box-shadow: 0 0 18px rgba(255,0,110,0.6), inset 0 0 12px rgba(255,0,110,0.4);
+  }
+
+  /* Sin tecla asignada o con la partida terminada: presentes pero apagados,
+     para que el layout no cambie entre juegos. */
+  .dpad-btn:disabled,
+  .face-btn:disabled { color: var(--ink-faint); cursor: default; }
+  .face-btn:disabled { border-color: var(--line-2); }
+
+  /* PAUSA, FIN y skin en una sola fila, con botones compactos para que quepa
+     en 360 px. La etiqueta "Skin" queda solo para lectores de pantalla: el
+     propio desplegable (RETRO, NEÓN…) ya dice lo que es. */
+  .gamepad-system {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-2);
+  }
+  .gamepad-actions { display: flex; gap: 8px; }
+  .gamepad-system .btn { padding: 10px 12px; font-size: 9px; letter-spacing: 0.12em; }
+  .gamepad-system .hud-stat.skin .l {
+    position: absolute; width: 1px; height: 1px; overflow: hidden;
+    clip-path: inset(50%); white-space: nowrap;
+  }
+  .gamepad-system .skin-select {
+    min-width: 0;
+    height: 36px;
+    padding: 0 26px 0 10px;
+    font-size: 9px;
+    background-position: right 9px center;
+  }
+
+  /* SPEC 10: en móvil el marco del CRT adelgaza para que la pantalla gane
+     ancho, y el pie se reparte en varias líneas en vez de desbordar. */
+  @media (max-width: 767px) {
+    /* Reproductor con gamepad a pantalla completa: sin pie de página ni pie
+       del CRT (sus atajos son de teclado), la pantalla centrada en el hueco
+       libre y el gamepad pegado abajo, al alcance de los pulgares. */
+    .av-root:has(.gamepad) { min-height: 100dvh; }
+    .av-root:has(.gamepad) .av-footer { display: none; }
+    .av-main:has(.gamepad) { display: flex; flex-direction: column; }
+    .av-player:has(.gamepad) {
+      flex: 1;
+      display: flex; flex-direction: column;
+      width: 100%;
+      margin: 0;
+      padding: 8px 8px 12px;
+    }
+    /* El CRT crece hasta llenar todo el alto libre entre la navegación y el
+       gamepad (pegado a él): cuanto más alto el móvil, más grande la
+       pantalla. La pantalla deja de ser 4:3 y el canvas se escala dentro con
+       `object-fit: contain`, sin deformarse. Tetris ya se ajusta al alto con
+       su propio layout (canvas + siguiente pieza), por eso queda fuera. */
+    .av-player:has(.gamepad) .crt {
+      flex: 1;
+      display: flex; flex-direction: column;
+      min-height: 0;
+    }
+    .av-player:has(.gamepad) .crt-screen {
+      flex: 1;
+      aspect-ratio: auto;
+      min-height: calc((100vw - 28px) * 0.75);
+    }
+    /* !important: las utilidades de tamaño del canvas (w-full h-auto) van en
+       una capa posterior a esta. */
+    .av-player:has(.gamepad) .crt-screen > canvas,
+    .av-player:has(.gamepad) .crt-screen > div > canvas:only-child {
+      position: absolute; inset: 0;
+      width: 100% !important; height: 100% !important;
+      object-fit: contain;
+    }
+    .av-player:has(.gamepad) .crt-bottom { display: none; }
+    .crt { padding: 6px; border-radius: 16px; }
+    .crt-screen { border-radius: 8px / 18px; }
+    .crt-bottom {
+      flex-wrap: wrap; justify-content: center;
+      gap: 6px 14px;
+      margin-top: 10px;
+      padding: 0;
+      font-size: 7px;
+      text-align: center;
+    }
+
+    /* Modal de fin de partida: el campo del nombre y GUARDAR se apilan, y
+       todos los botones ocupan el ancho, para que nada salga del marco. */
+    .modal { padding: 26px 18px; }
+    .modal h2 { font-size: 18px; }
+    .modal .input-row { flex-direction: column; }
+    .modal .input-row input { flex: none; min-width: 0; }
+    .modal .input-row .btn,
+    .modal .actions .btn { width: 100%; }
+    .modal .actions { flex-direction: column; }
+  }
+
   /* fake in-screen game */
   .game-arena {
     position: absolute; inset: 0;

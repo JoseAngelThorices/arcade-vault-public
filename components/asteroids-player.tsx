@@ -7,6 +7,9 @@
 //
 // Al guardar, la puntuacion se inserta en la tabla `scores` de Supabase y el
 // nombre se recuerda en `av_player_name` para la siguiente partida (SPEC 06).
+//
+// En movil (< md) el HUD se oculta y el juego se maneja con el gamepad virtual
+// de debajo del CRT (SPEC 10).
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -15,12 +18,16 @@ import { readPlayerName, writePlayerName } from "@/lib/player-name";
 import { normalizeName, useSession } from "@/lib/session";
 import { useSkin } from "@/lib/skins";
 import SkinPicker from "@/components/skin-picker";
+import MobileGamepad, { type KeyMap } from "@/components/mobile-gamepad";
 import { createClient } from "@/lib/supabase/client";
 import type { GameRow } from "@/lib/supabase/types";
 
 const AsteroidsGame = dynamic(() => import("@/components/games/asteroids-game"), {
   ssr: false,
 });
+
+// Teclas del motor para cada boton del gamepad; B no tiene accion en Asteroids.
+const KEY_MAP: KeyMap = { up: "ArrowUp", left: "ArrowLeft", right: "ArrowRight", a: "Space" };
 
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -82,7 +89,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
 
   return (
     <div className="av-player fade-in">
-      <div className="player-hud">
+      <div className="player-hud max-md:hidden">
         <div className="hud-stats">
           <div className="hud-stat player">
             <div className="l">Jugador</div>
@@ -145,6 +152,16 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
           <span>← ↑ → MOVER · ESPACIO DISPARAR</span>
         </div>
       </div>
+
+      <MobileGamepad
+        keyMap={KEY_MAP}
+        paused={paused}
+        disabled={over}
+        onPauseToggle={() => setPaused((p) => !p)}
+        onEnd={openGameOver}
+        skin={skin}
+        onSkinChange={setSkin}
+      />
 
       {over && (
         <div className="modal-bd">
