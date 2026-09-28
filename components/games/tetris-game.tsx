@@ -2,15 +2,17 @@
 
 // Tetris (references/start-games/03-tetris/game.js) dentro de un componente React.
 // La mecanica es la del original (7 piezas estandar, wall kicks, ghost,
-// soft/hard drop, puntuacion clasica por nivel); los cambios son: skin Retro
-// fija, nivel inicial 1, la pausa llega por prop (P y Escape la piden con
+// soft/hard drop, puntuacion clasica por nivel); los cambios son: tres skins
+// (NEON, RETRO y CLASICO) elegidas por prop, nivel inicial 1, la pausa llega por prop (P y Escape la piden con
 // onPauseToggle), puntuacion/lineas/nivel se notifican por callback en lugar de
 // pintarse, y no hay records, menus ni overlays: los pone la plataforma.
 
 import { useEffect, useRef } from "react";
+import type { Skin } from "@/lib/skins";
 
 interface TetrisGameProps {
   paused: boolean;
+  skin: Skin;
   onScoreChange: (score: number) => void;
   onLinesChange: (lines: number) => void;
   onLevelChange: (level: number) => void;
@@ -18,7 +20,7 @@ interface TetrisGameProps {
   onGameOver: (finalScore: number) => void;
 }
 
-type Callbacks = Omit<TetrisGameProps, "paused">;
+type Callbacks = Omit<TetrisGameProps, "paused" | "skin">;
 
 const COLS = 10;
 const ROWS = 20;
@@ -45,29 +47,52 @@ const DROP_LEVEL_FACTOR = 0.85; // cada nivel multiplica el intervalo por este f
 const DROP_MIN_MS = 60;
 const GAME_KEYS = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Space", "KeyX"];
 
-// Skin Retro del original con los colores del tema oscuro.
-const COLORS = [
-  "",
-  "#4dd0e1",
-  "#ffd54f",
-  "#ba68c8",
-  "#81c784",
-  "#e57373",
-  "#90caf9",
-  "#ffb74d",
-];
-const BOARD_BG = "#1a1a25";
-const GRID_COLOR = "#22222e";
+// Paleta y estilo de bloque de cada skin. `pieces` va indexado por tipo de
+// pieza (1..7 = I O T S Z J L); `grid` null = sin rejilla.
+//   glow   → NEON: relleno con shadowBlur, fantasma como contorno brillante
+//   flat   → RETRO: bloque plano con franja clara arriba, fantasma translucido
+//   bevel  → CLASICO: bloque biselado claro/oscuro, fantasma como contorno blanco
+interface Palette {
+  boardBg: string;
+  grid: string | null;
+  pieces: string[];
+  block: "glow" | "flat" | "bevel";
+}
+
+const PALETTES: Record<Skin, Palette> = {
+  neon: {
+    boardBg: "#0a0a0f",
+    grid: "rgba(0,245,255,0.10)",
+    pieces: ["", "#00f5ff", "#f5ff00", "#ff006e", "#00ff88", "#ff2b4d", "#2e6bff", "#ff8c00"],
+    block: "glow",
+  },
+  // La skin Retro del original con los colores del tema oscuro.
+  retro: {
+    boardBg: "#1a1a25",
+    grid: "#22222e",
+    pieces: ["", "#4dd0e1", "#ffd54f", "#ba68c8", "#81c784", "#e57373", "#90caf9", "#ffb74d"],
+    block: "flat",
+  },
+  clasico: {
+    boardBg: "#000000",
+    grid: null,
+    pieces: ["", "#00f0f0", "#f0f000", "#a000f0", "#00f000", "#f00000", "#0000f0", "#f0a000"],
+    block: "bevel",
+  },
+};
+
 const GHOST_ALPHA = 0.2;
 
-export default function TetrisGame({ paused, ...callbacks }: TetrisGameProps) {
+export default function TetrisGame({ paused, skin, ...callbacks }: TetrisGameProps) {
   const boardRef = useRef<HTMLCanvasElement>(null);
   const nextRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
+  const skinRef = useRef(skin);
   const callbacksRef = useRef<Callbacks>(callbacks);
 
   useEffect(() => {
     pausedRef.current = paused;
+    skinRef.current = skin;
     callbacksRef.current = callbacks;
   });
 
@@ -75,7 +100,7 @@ export default function TetrisGame({ paused, ...callbacks }: TetrisGameProps) {
     const board = boardRef.current;
     const next = nextRef.current;
     if (!board || !next) return;
-    return startGame(board, next, pausedRef, callbacksRef);
+    return startGame(board, next, pausedRef, skinRef, callbacksRef);
   }, []);
 
   return (
@@ -114,10 +139,12 @@ function startGame(
   boardCanvas: HTMLCanvasElement,
   nextCanvas: HTMLCanvasElement,
   pausedRef: { current: boolean },
+  skinRef: { current: Skin },
   callbacksRef: { current: Callbacks },
 ): () => void {
   const ctx = boardCanvas.getContext("2d")!;
   const nextCtx = nextCanvas.getContext("2d")!;
+  const pal = () => PALETTES[skinRef.current];
 
   // ── Estado ──────────────────────────────────────────────────────────────────
   const board: number[][] = Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -233,24 +260,66 @@ function startGame(
     drawNext();
   }
 
-  // ── Dibujo (skin Retro) ─────────────────────────────────────────────────────
-  function drawBlock(c: CanvasRenderingContext2D, x: number, y: number, size: number, color: string, alpha = 1) {
+  // ── Dibujo ──────────────────────────────────────────────────────────────────
+  function drawBlock(c: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
+    const style = pal().block;
     c.save();
-    c.globalAlpha = alpha;
     c.fillStyle = color;
-    c.fillRect(x + 1, y + 1, size - 2, size - 2);
-    c.fillStyle = "rgba(255,255,255,0.12)"; // highlight
-    c.fillRect(x + 1, y + 1, size - 2, 4);
+
+    if (style === "glow") {
+      c.shadowColor = color;
+      c.shadowBlur = 10;
+      c.fillRect(x + 2, y + 2, size - 4, size - 4);
+    } else if (style === "flat") {
+      c.fillRect(x + 1, y + 1, size - 2, size - 2);
+      c.fillStyle = "rgba(255,255,255,0.12)"; // highlight
+      c.fillRect(x + 1, y + 1, size - 2, 4);
+    } else {
+      // Bisel: luz arriba a la izquierda, sombra abajo a la derecha
+      const b = Math.max(2, Math.round(size / 10));
+      c.fillRect(x, y, size, size);
+      c.fillStyle = "rgba(255,255,255,0.55)";
+      c.fillRect(x, y, size, b);
+      c.fillRect(x, y, b, size);
+      c.fillStyle = "rgba(0,0,0,0.45)";
+      c.fillRect(x, y + size - b, size, b);
+      c.fillRect(x + size - b, y, b, size);
+    }
     c.restore();
   }
 
-  function drawCell(c: CanvasRenderingContext2D, col: number, row: number, colorIndex: number, size: number, alpha?: number) {
+  // La pieza fantasma: contorno en NEON y CLASICO, bloque translucido en RETRO.
+  function drawGhostBlock(x: number, y: number, color: string) {
+    const style = pal().block;
+    ctx.save();
+    if (style === "flat") {
+      ctx.globalAlpha = GHOST_ALPHA;
+      ctx.fillStyle = color;
+      ctx.fillRect(x + 1, y + 1, BLOCK - 2, BLOCK - 2);
+    } else if (style === "glow") {
+      ctx.globalAlpha = 0.45;
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 6;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 3.5, y + 3.5, BLOCK - 7, BLOCK - 7);
+    } else {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 1.5, y + 1.5, BLOCK - 3, BLOCK - 3);
+    }
+    ctx.restore();
+  }
+
+  function drawCell(c: CanvasRenderingContext2D, col: number, row: number, colorIndex: number, size: number) {
     if (!colorIndex) return;
-    drawBlock(c, col * size, row * size, size, COLORS[colorIndex], alpha);
+    drawBlock(c, col * size, row * size, size, pal().pieces[colorIndex]);
   }
 
   function drawGrid() {
-    ctx.strokeStyle = GRID_COLOR;
+    const grid = pal().grid;
+    if (!grid) return;
+    ctx.strokeStyle = grid;
     ctx.lineWidth = 0.5;
     for (let c = 1; c < COLS; c++) {
       ctx.beginPath();
@@ -267,7 +336,9 @@ function startGame(
   }
 
   function draw() {
-    ctx.fillStyle = BOARD_BG;
+    // El panel de siguiente pieza tambien se repinta, para seguir los cambios de skin.
+    drawNext();
+    ctx.fillStyle = pal().boardBg;
     ctx.fillRect(0, 0, W, H);
     drawGrid();
 
@@ -279,7 +350,8 @@ function startGame(
     const gy = ghostY();
     for (let r = 0; r < current.shape.length; r++)
       for (let c = 0; c < current.shape[r].length; c++)
-        if (current.shape[r][c]) drawCell(ctx, current.x + c, gy + r, current.shape[r][c], BLOCK, GHOST_ALPHA);
+        if (current.shape[r][c])
+          drawGhostBlock((current.x + c) * BLOCK, (gy + r) * BLOCK, pal().pieces[current.shape[r][c]]);
 
     for (let r = 0; r < current.shape.length; r++)
       for (let c = 0; c < current.shape[r].length; c++)
@@ -287,7 +359,7 @@ function startGame(
   }
 
   function drawNext() {
-    nextCtx.fillStyle = BOARD_BG;
+    nextCtx.fillStyle = pal().boardBg;
     nextCtx.fillRect(0, 0, NEXT_SIZE, NEXT_SIZE);
     const shape = next.shape;
     const offX = Math.floor((4 - shape[0].length) / 2);

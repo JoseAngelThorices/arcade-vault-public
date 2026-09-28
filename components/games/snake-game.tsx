@@ -7,11 +7,14 @@
 // prop (P y Escape la piden con onPauseToggle) y puntuacion/longitud/nivel se
 // notifican por callback en lugar de pintarse. Solo queda en el canvas el
 // aviso "Pulsa una dirección"; PAUSA y fin de partida los pone la plataforma.
+// La skin (NEON, RETRO o CLASICO) llega por prop y se lee en cada frame.
 
 import { useEffect, useRef } from "react";
+import type { Skin } from "@/lib/skins";
 
 interface SnakeGameProps {
   paused: boolean;
+  skin: Skin;
   onScoreChange: (score: number) => void;
   onLengthChange: (length: number) => void; // celdas de la serpiente, empieza en 3
   onLevelChange: (level: number) => void;
@@ -19,7 +22,7 @@ interface SnakeGameProps {
   onGameOver: (finalScore: number) => void;
 }
 
-type Callbacks = Omit<SnakeGameProps, "paused">;
+type Callbacks = Omit<SnakeGameProps, "paused" | "skin">;
 
 const ASSETS = "/games/snake";
 
@@ -40,11 +43,61 @@ const MAX_QUEUED_TURNS = 2;
 
 const FRUIT_SIZE = CELL - 4; // 26 px de alto, 2 px de margen
 
-const COLOR_BG = "#0a0a0f"; // --bg
-const COLOR_GRID = "rgba(0, 255, 136, 0.07)";
-const COLOR_BODY = "#00ff88"; // --green
-const COLOR_HEAD = "#9dffd0";
-const COLOR_EYE = "#0a0a0f";
+// Paleta de cada skin. `glow` es el shadowBlur de la serpiente (0 = sin glow),
+// `topEdge` la franja clara de RETRO y `fruit` como se dibuja la comida:
+// sprite con halo, sprite tal cual o el rombo del Snake de LCD.
+interface Palette {
+  bg: string;
+  grid: string;
+  body: string;
+  head: string;
+  eye: string;
+  glow: number;
+  topEdge: string | null;
+  fruit: "sprite-glow" | "sprite" | "diamond";
+  text: string;
+  textGlow: number;
+}
+
+const PALETTES: Record<Skin, Palette> = {
+  neon: {
+    bg: "#0a0a0f", // --bg
+    grid: "rgba(0, 255, 136, 0.07)",
+    body: "#00ff88", // --green
+    head: "#9dffd0",
+    eye: "#0a0a0f",
+    glow: 12,
+    topEdge: null,
+    fruit: "sprite-glow",
+    text: "#00f5ff", // --cyan
+    textGlow: 8,
+  },
+  retro: {
+    bg: "#0a0a0f",
+    grid: "#1a1d2e",
+    body: "#2bd672",
+    head: "#eafff0",
+    eye: "#0a0a0f",
+    glow: 0,
+    topEdge: "#7dffb8",
+    fruit: "sprite",
+    text: "#eafff0",
+    textGlow: 0,
+  },
+  // Pantalla LCD monocroma de los moviles y consolas portatiles.
+  clasico: {
+    bg: "#9bbc0f",
+    grid: "rgba(15, 56, 15, 0.15)",
+    body: "#0f380f",
+    head: "#081f08",
+    eye: "#9bbc0f",
+    glow: 0,
+    topEdge: null,
+    fruit: "diamond",
+    text: "#0f380f",
+    textGlow: 0,
+  },
+};
 
 // Recortes de la fila de pixel art de fruits.png (sprites.js, y=136, h=160).
 const FRUITS = {
@@ -98,20 +151,22 @@ const KEY_DIR: Record<string, Dir> = {
   KeyD: "right",
 };
 
-export default function SnakeGame({ paused, ...callbacks }: SnakeGameProps) {
+export default function SnakeGame({ paused, skin, ...callbacks }: SnakeGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
+  const skinRef = useRef(skin);
   const callbacksRef = useRef<Callbacks>(callbacks);
 
   useEffect(() => {
     pausedRef.current = paused;
+    skinRef.current = skin;
     callbacksRef.current = callbacks;
   });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    return startGame(canvas, pausedRef, callbacksRef);
+    return startGame(canvas, pausedRef, skinRef, callbacksRef);
   }, []);
 
   return (
@@ -129,10 +184,12 @@ export default function SnakeGame({ paused, ...callbacks }: SnakeGameProps) {
 function startGame(
   canvas: HTMLCanvasElement,
   pausedRef: { current: boolean },
+  skinRef: { current: Skin },
   callbacksRef: { current: Callbacks },
 ): () => void {
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
+  const pal = () => PALETTES[skinRef.current];
 
   let sheet: HTMLImageElement | null = null;
 
@@ -220,9 +277,10 @@ function startGame(
 
   // ── Dibujo ──────────────────────────────────────────────────────────────────
   function drawGrid() {
-    ctx.fillStyle = COLOR_BG;
+    const p = pal();
+    ctx.fillStyle = p.bg;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-    ctx.strokeStyle = COLOR_GRID;
+    ctx.strokeStyle = p.grid;
     ctx.lineWidth = 1;
     ctx.beginPath();
     for (let i = 1; i < COLS; i++) {
@@ -240,22 +298,54 @@ function startGame(
 
   function drawFruit() {
     if (!state.food || !sheet) return;
+    const p = pal();
+
+    if (p.fruit === "diamond") {
+      // El "punto" de comida del Snake de LCD, sin sprite a color
+      const cx = state.food.cell.x * CELL + CELL / 2;
+      const cy = state.food.cell.y * CELL + CELL / 2;
+      const r = CELL / 2 - 6;
+      ctx.fillStyle = p.body;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - r);
+      ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r);
+      ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+
     const src = FRUITS[state.food.sprite];
     const h = FRUIT_SIZE;
     const w = Math.round((src.w * h) / src.h);
     const x = state.food.cell.x * CELL + Math.round((CELL - w) / 2);
     const y = state.food.cell.y * CELL + (CELL - h) / 2;
+    ctx.save();
+    if (p.fruit === "sprite-glow") {
+      ctx.shadowColor = p.body;
+      ctx.shadowBlur = 10;
+    }
     ctx.drawImage(sheet, src.x, src.y, src.w, src.h, x, y, w, h);
+    ctx.restore();
   }
 
   function drawSnake() {
+    const p = pal();
     ctx.save();
-    ctx.shadowColor = COLOR_BODY;
-    ctx.shadowBlur = 12;
+    if (p.glow > 0) {
+      ctx.shadowColor = p.body;
+      ctx.shadowBlur = p.glow;
+    }
     for (let i = state.snake.length - 1; i >= 0; i--) {
       const c = state.snake[i];
-      ctx.fillStyle = i === 0 ? COLOR_HEAD : COLOR_BODY;
+      ctx.fillStyle = i === 0 ? p.head : p.body;
       ctx.fillRect(c.x * CELL + 2, c.y * CELL + 2, CELL - 4, CELL - 4);
+      if (p.topEdge) {
+        // RETRO: luz cenital de sprite de 8 bits
+        ctx.fillStyle = p.topEdge;
+        ctx.fillRect(c.x * CELL + 2, c.y * CELL + 2, CELL - 4, 2);
+      }
     }
     ctx.restore();
 
@@ -267,7 +357,7 @@ function startGame(
     const eye = 5;
     const ahead = 5;
     const side = 6;
-    ctx.fillStyle = COLOR_EYE;
+    ctx.fillStyle = p.eye;
     for (const s of [-1, 1]) {
       const ex = cx + d.x * ahead + (d.y !== 0 ? s * side : 0);
       const ey = cy + d.y * ahead + (d.x !== 0 ? s * side : 0);
@@ -278,11 +368,18 @@ function startGame(
   // Solo el aviso de espera: PAUSA y fin de partida los muestra la plataforma.
   function drawOverlay() {
     if (state.started || state.over) return;
-    ctx.fillStyle = "#fff";
+    const p = pal();
+    ctx.save();
+    ctx.fillStyle = p.text;
+    if (p.textGlow > 0) {
+      ctx.shadowColor = p.text;
+      ctx.shadowBlur = p.textGlow;
+    }
     ctx.font = "bold 22px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Pulsa una dirección", CANVAS_W / 2, CANVAS_H / 2 - 3 * CELL);
+    ctx.restore();
   }
 
   function draw() {

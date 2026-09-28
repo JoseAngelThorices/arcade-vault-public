@@ -8,11 +8,15 @@
 // callback en lugar de pintarse, al vaciar el muro sale uno nuevo en vez de
 // ¡VICTORIA!, y no hay overlays PAUSA/GAME OVER ni Enter para reiniciar: los
 // pone la plataforma. Solo queda en el canvas el aviso "Pulsa Espacio".
+// La skin llega por prop: CLASICO usa el spritesheet del original; NEON y RETRO
+// dibujan pala, bola, ladrillos, escombros y textos a mano con su paleta.
 
 import { useEffect, useRef } from "react";
+import type { Skin } from "@/lib/skins";
 
 interface ArkanoidGameProps {
   paused: boolean;
+  skin: Skin;
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
   onComboChange: (mult: number) => void; // comboMult(): 0..8
@@ -20,7 +24,7 @@ interface ArkanoidGameProps {
   onGameOver: (finalScore: number) => void;
 }
 
-type Callbacks = Omit<ArkanoidGameProps, "paused">;
+type Callbacks = Omit<ArkanoidGameProps, "paused" | "skin">;
 
 const ASSETS = "/games/arkanoid";
 
@@ -126,20 +130,95 @@ const SPRITES = {
   } satisfies Record<BrickColor, Frame>,
 };
 
-export default function ArkanoidGame({ paused, ...callbacks }: ArkanoidGameProps) {
+// ── Skins ─────────────────────────────────────────────────────────────────────
+// `shapes` null = se dibuja con el spritesheet (CLASICO). Si no, cada ladrillo
+// es [relleno, franja clara superior] (null = sin franja). `glow` es el
+// shadowBlur base (0 = sin glow).
+interface Shapes {
+  paddle: string;
+  paddleEdge: string | null;
+  ball: string;
+  roundBall: boolean;
+  bricks: Record<BrickColor, [string, string | null]>;
+}
+
+interface Palette {
+  bg: string;
+  shapes: Shapes | null;
+  text: string;
+  glow: number;
+  fadeParticles: boolean;
+}
+
+const PALETTES: Record<Skin, Palette> = {
+  neon: {
+    bg: "#0a0a0f", // --bg
+    shapes: {
+      paddle: "#00f5ff", // --cyan
+      paddleEdge: null,
+      ball: "#f5ff00", // --yellow
+      roundBall: true,
+      bricks: {
+        gray: ["#c8ccff", null],
+        red: ["#ff2d55", null],
+        yellow: ["#f5ff00", null],
+        cyan: ["#00f5ff", null],
+        magenta: ["#ff006e", null],
+        hotpink: ["#ff4dd2", null],
+        green: ["#00ff88", null],
+      },
+    },
+    text: "#f5ff00",
+    glow: 10,
+    fadeParticles: true,
+  },
+  retro: {
+    bg: "#0a0a0f",
+    shapes: {
+      paddle: "#e6e9ff", // --ink
+      paddleEdge: "#ffffff",
+      ball: "#f5ff00",
+      roundBall: false,
+      bricks: {
+        gray: ["#7a7a7a", "#b4b4b4"],
+        red: ["#d92d2d", "#ff6b6b"],
+        yellow: ["#d9c72d", "#fff06b"],
+        cyan: ["#2dd9c7", "#8bfff0"],
+        magenta: ["#c72dd9", "#f08bff"],
+        hotpink: ["#d92d8f", "#ff8bc9"],
+        green: ["#3fd92d", "#a0ff8b"],
+      },
+    },
+    text: "#ffffff",
+    glow: 0,
+    fadeParticles: false,
+  },
+  // El spritesheet del original, sin tocar.
+  clasico: {
+    bg: "#000000",
+    shapes: null,
+    text: "#ffffff",
+    glow: 0,
+    fadeParticles: true,
+  },
+};
+
+export default function ArkanoidGame({ paused, skin, ...callbacks }: ArkanoidGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
+  const skinRef = useRef(skin);
   const callbacksRef = useRef<Callbacks>(callbacks);
 
   useEffect(() => {
     pausedRef.current = paused;
+    skinRef.current = skin;
     callbacksRef.current = callbacks;
   });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    return startGame(canvas, pausedRef, callbacksRef);
+    return startGame(canvas, pausedRef, skinRef, callbacksRef);
   }, []);
 
   return (
@@ -176,10 +255,20 @@ interface Rect {
 function startGame(
   canvas: HTMLCanvasElement,
   pausedRef: { current: boolean },
+  skinRef: { current: Skin },
   callbacksRef: { current: Callbacks },
 ): () => void {
   const ctx = canvas.getContext("2d")!;
   ctx.imageSmoothingEnabled = false;
+  const pal = () => PALETTES[skinRef.current];
+
+  // Glow de NEON; quien lo llame debe estar entre save()/restore().
+  function glow(color: string, scale = 1) {
+    const blur = pal().glow * scale;
+    if (blur <= 0) return;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
+  }
 
   // ── Assets ──────────────────────────────────────────────────────────────────
   let sheet: HTMLImageElement | null = null;
@@ -486,22 +575,88 @@ function startGame(
 
   // ── Dibujo ──────────────────────────────────────────────────────────────────
   function draw(now: number) {
-    ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+    ctx.fillStyle = pal().bg;
+    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
     drawField(now);
     drawOverlay();
   }
 
+  function drawBrick(brick: Brick) {
+    const sh = pal().shapes;
+    if (!sh) {
+      drawFrame(SPRITES.blocks[brick.color], brick.x, brick.y, BRICK_W, BRICK_H);
+      return;
+    }
+    const [fill, edge] = sh.bricks[brick.color];
+    ctx.save();
+    ctx.fillStyle = fill;
+    glow(fill, 0.6);
+    ctx.fillRect(brick.x + 2, brick.y + 2, BRICK_W - 4, BRICK_H - 4);
+    if (edge) {
+      // RETRO: franja clara superior, como un sprite de 8 bits
+      ctx.fillStyle = edge;
+      ctx.fillRect(brick.x + 2, brick.y + 2, BRICK_W - 4, 4);
+    }
+    ctx.restore();
+  }
+
+  function drawPaddle() {
+    const p = pal();
+    const sh = p.shapes;
+    const { paddle } = state;
+    if (!sh) {
+      drawFrame(SPRITES.paddle, paddle.x, paddle.y, paddle.w, paddle.h);
+      return;
+    }
+    ctx.save();
+    ctx.fillStyle = sh.paddle;
+    glow(sh.paddle);
+    if (p.glow > 0) {
+      ctx.beginPath();
+      ctx.roundRect(paddle.x, paddle.y + 4, paddle.w, paddle.h - 8, 8);
+      ctx.fill();
+    } else {
+      ctx.fillRect(paddle.x, paddle.y + 4, paddle.w, paddle.h - 8);
+      if (sh.paddleEdge) {
+        ctx.fillStyle = sh.paddleEdge;
+        ctx.fillRect(paddle.x, paddle.y + 4, paddle.w, 3);
+      }
+    }
+    ctx.restore();
+  }
+
+  function drawBall(x: number, y: number) {
+    const sh = pal().shapes;
+    const size = state.ball.size;
+    if (!sh) {
+      drawFrame(SPRITES.ball, x, y, size, size);
+      return;
+    }
+    ctx.save();
+    ctx.fillStyle = sh.ball;
+    glow(sh.ball, 0.8);
+    if (sh.roundBall) {
+      ctx.beginPath();
+      ctx.arc(x + size / 2, y + size / 2, size / 2 - 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // RETRO: bola cuadrada, alineada a la rejilla de pixeles
+      ctx.fillRect(Math.round(x + 3), Math.round(y + 3), size - 6, size - 6);
+    }
+    ctx.restore();
+  }
+
   function drawField(now: number) {
+    const p = pal();
     for (const brick of state.bricks) {
       if (!brick.alive) continue;
-      const sprite = SPRITES.blocks[brick.color];
-      drawFrame(sprite, brick.x, brick.y, BRICK_W, BRICK_H);
+      drawBrick(brick);
 
       // El bloque danado se suma a si mismo para aclararse sin tenir el fondo
       if (!brick.damaged) continue;
       ctx.globalCompositeOperation = "lighter";
       ctx.globalAlpha = GRAY_DAMAGED_LIGHTEN;
-      drawFrame(sprite, brick.x, brick.y, BRICK_W, BRICK_H);
+      drawBrick(brick);
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = "source-over";
     }
@@ -512,31 +667,34 @@ function startGame(
       if (frame) drawFrame(frame, ex.x, ex.y, BRICK_W, BRICK_H);
     }
 
-    // Escombros del bloque roto
-    for (const p of state.particles) {
-      ctx.globalAlpha = Math.max(0, 1 - (now - p.startTime) / PARTICLE_LIFE);
-      ctx.fillStyle = PARTICLE_COLORS[p.color];
-      ctx.fillRect(p.x, p.y, PARTICLE_SIZE, PARTICLE_SIZE);
+    // Escombros del bloque roto. RETRO los apaga de golpe, sin desvanecido.
+    for (const pt of state.particles) {
+      const color = p.shapes ? p.shapes.bricks[pt.color][0] : PARTICLE_COLORS[pt.color];
+      ctx.save();
+      ctx.globalAlpha = p.fadeParticles ? Math.max(0, 1 - (now - pt.startTime) / PARTICLE_LIFE) : 1;
+      ctx.fillStyle = color;
+      glow(color, 0.6);
+      ctx.fillRect(Math.round(pt.x), Math.round(pt.y), PARTICLE_SIZE, PARTICLE_SIZE);
+      ctx.restore();
     }
-    ctx.globalAlpha = 1;
 
-    const { paddle, ball } = state;
+    const { ball } = state;
 
     // Estela de la bola, de la posicion mas reciente a la mas antigua
     for (let i = 0; i < state.trail.length; i++) {
       const t = state.trail[i];
       ctx.globalAlpha = TRAIL_MAX_ALPHA * (1 - i / TRAIL_LENGTH);
-      drawFrame(SPRITES.ball, t.x, t.y, ball.size, ball.size);
+      drawBall(t.x, t.y);
     }
     ctx.globalAlpha = 1;
 
-    drawFrame(SPRITES.paddle, paddle.x, paddle.y, paddle.w, paddle.h);
-    if (state.status !== "gameover") {
-      drawFrame(SPRITES.ball, ball.x, ball.y, ball.size, ball.size);
-    }
+    drawPaddle();
+    if (state.status !== "gameover") drawBall(ball.x, ball.y);
 
     // Puntos que suben y se desvanecen sobre el bloque roto
-    ctx.fillStyle = "#fff";
+    ctx.save();
+    ctx.fillStyle = p.text;
+    glow(p.text, 0.6);
     ctx.font = "bold 18px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
@@ -545,17 +703,21 @@ function startGame(
       ctx.globalAlpha = Math.max(0, 1 - progress);
       ctx.fillText(ft.text, ft.x, ft.y - FLOAT_TEXT_RISE * progress);
     }
-    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   // Solo el aviso de saque: PAUSA y fin de partida los muestra la plataforma.
   function drawOverlay() {
     if (state.status !== "serve") return;
-    ctx.fillStyle = "#fff";
+    const p = pal();
+    ctx.save();
+    ctx.fillStyle = p.text;
+    glow(p.text, 0.8);
     ctx.font = "bold 22px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Pulsa Espacio", CANVAS_W / 2, PADDLE_Y - 60);
+    ctx.restore();
   }
 
   // ── Notificacion a React ────────────────────────────────────────────────────

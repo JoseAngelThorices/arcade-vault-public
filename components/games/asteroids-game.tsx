@@ -5,36 +5,96 @@
 // cambio de puntuacion/vidas/nivel se notifica por callback, y ni esos valores
 // ni la capa "GAME OVER" se dibujan en el canvas: los muestran el HUD y el
 // modal de la plataforma (reiniciar ya no es ESPACIO: se remonta el componente).
+// La skin (SPEC 10) tambien llega por prop y se lee en cada frame.
 
 import { useEffect, useRef } from "react";
+import type { Skin } from "@/lib/skins";
 
 interface AsteroidsGameProps {
   paused: boolean;
+  skin: Skin;
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
   onLevelChange: (level: number) => void;
   onGameOver: (finalScore: number) => void;
 }
 
-type Callbacks = Omit<AsteroidsGameProps, "paused">;
+type Callbacks = Omit<AsteroidsGameProps, "paused" | "skin">;
 
 const W = 800;
 const H = 600;
 
-export default function AsteroidsGame({ paused, ...callbacks }: AsteroidsGameProps) {
+// Paleta y estilo de dibujo de cada skin. `glow` es el shadowBlur base (0 =
+// sin glow), `solid` dibuja formas rellenas y pixeladas en lugar de trazos, y
+// `powerup` sustituye el color propio de cada power-up (null = el suyo).
+interface Palette {
+  bg: string;
+  ship: string;
+  asteroid: string;
+  asteroidEdge: string;
+  bullet: string;
+  particle: string; // "r,g,b" para componer el alpha
+  flame: [string, string]; // base y punta de la llama
+  powerup: string | null;
+  glow: number;
+  solid: boolean;
+}
+
+const PALETTES: Record<Skin, Palette> = {
+  neon: {
+    bg: "#0a0a0f",
+    ship: "#00f5ff",
+    asteroid: "#ff006e",
+    asteroidEdge: "#ff006e",
+    bullet: "#f5ff00",
+    particle: "0,255,136",
+    flame: ["#f5ff00", "#ff006e"],
+    powerup: null,
+    glow: 12,
+    solid: false,
+  },
+  retro: {
+    bg: "#0a0a0f",
+    ship: "#e6e9ff",
+    asteroid: "#4a4f70",
+    asteroidEdge: "#9aa0c8",
+    bullet: "#f5ff00",
+    particle: "255,255,255",
+    flame: ["#f5ff00", "#ff8200"],
+    powerup: null,
+    glow: 0,
+    solid: true,
+  },
+  clasico: {
+    bg: "#000000",
+    ship: "#ffffff",
+    asteroid: "#ffffff",
+    asteroidEdge: "#ffffff",
+    bullet: "#ffffff",
+    particle: "255,255,255",
+    flame: ["#ffffff", "#ffffff"],
+    powerup: "#c8c8c8",
+    glow: 0,
+    solid: false,
+  },
+};
+
+export default function AsteroidsGame({ paused, skin, ...callbacks }: AsteroidsGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
+  const skinRef = useRef(skin);
   const callbacksRef = useRef<Callbacks>(callbacks);
 
   useEffect(() => {
     pausedRef.current = paused;
+    skinRef.current = skin;
     callbacksRef.current = callbacks;
   });
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    return startGame(canvas, pausedRef, callbacksRef);
+    return startGame(canvas, pausedRef, skinRef, callbacksRef);
   }, []);
 
   return (
@@ -52,9 +112,22 @@ export default function AsteroidsGame({ paused, ...callbacks }: AsteroidsGamePro
 function startGame(
   canvas: HTMLCanvasElement,
   pausedRef: { current: boolean },
+  skinRef: { current: Skin },
   callbacksRef: { current: Callbacks },
 ): () => void {
   const ctx = canvas.getContext("2d")!;
+
+  // ── Skin ────────────────────────────────────────────────────────────────────
+  const pal = () => PALETTES[skinRef.current];
+
+  // Aplica el glow de la skin NEÓN (nada en las demás). Quien lo llame debe
+  // estar entre save()/restore() para no dejarlo puesto al resto del frame.
+  function glow(color: string, scale = 1) {
+    const blur = pal().glow * scale;
+    if (blur <= 0) return;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = blur;
+  }
 
   // ── Input ───────────────────────────────────────────────────────────────────
 
@@ -125,10 +198,19 @@ function startGame(
     }
 
     draw() {
-      ctx.fillStyle = "#fff";
+      const p = pal();
+      ctx.fillStyle = p.bullet;
+      if (p.solid) {
+        // Bloque de 3×3 px alineado a la rejilla de píxeles
+        ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 1, 3, 3);
+        return;
+      }
+      ctx.save();
+      glow(p.bullet, 0.7);
       ctx.beginPath();
       ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     }
   }
 
@@ -191,18 +273,50 @@ function startGame(
     }
 
     draw() {
+      const p = pal();
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.rot);
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.5;
-      ctx.lineJoin = "round";
       ctx.beginPath();
       ctx.moveTo(this.verts[0][0], this.verts[0][1]);
       for (let i = 1; i < this.verts.length; i++) ctx.lineTo(this.verts[i][0], this.verts[i][1]);
       ctx.closePath();
-      ctx.stroke();
+
+      if (p.solid) {
+        ctx.fillStyle = p.asteroid;
+        ctx.fill();
+        this.drawTopEdge(p.asteroidEdge);
+      } else {
+        ctx.strokeStyle = p.asteroid;
+        ctx.lineWidth = p.glow > 0 ? 2 : 1.5;
+        ctx.lineJoin = "round";
+        glow(p.asteroid, 0.8);
+        ctx.stroke();
+      }
       ctx.restore();
+    }
+
+    // RETRO: remarca en claro los lados que miran hacia arriba en pantalla,
+    // como la luz cenital de un sprite de 8 bits. Se llama ya rotado.
+    drawTopEdge(color: string) {
+      const sin = Math.sin(this.rot);
+      const cos = Math.cos(this.rot);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.lineCap = "square";
+      ctx.beginPath();
+      for (let i = 0; i < this.verts.length; i++) {
+        const [ax, ay] = this.verts[i];
+        const [bx, by] = this.verts[(i + 1) % this.verts.length];
+        // Normal exterior del lado, girada a coordenadas de pantalla
+        const nx = by - ay;
+        const ny = ax - bx;
+        if (sin * nx + cos * ny < 0) {
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(bx, by);
+        }
+      }
+      ctx.stroke();
     }
   }
 
@@ -224,6 +338,9 @@ function startGame(
   };
   type PowerUpType = keyof typeof POWERUP_TYPES;
   type EffectType = Exclude<PowerUpType, "bomb">;
+
+  // Color de un power-up en la skin activa (CLÁSICO los pinta todos en gris)
+  const powerupColor = (type: PowerUpType) => pal().powerup ?? POWERUP_TYPES[type].color;
 
   // Baraja in situ (Fisher-Yates)
   function shuffle<T>(arr: T[]): T[] {
@@ -271,12 +388,31 @@ function startGame(
       // Parpadea en los últimos 3 s antes de expirar
       if (this.ttl < 3 && Math.floor(this.ttl * 8) % 2 === 0) return;
 
+      const p = pal();
+      const color = powerupColor(this.type);
       ctx.save();
       ctx.translate(this.x, this.y);
-      ctx.strokeStyle = POWERUP_TYPES[this.type].color;
-      ctx.fillStyle = POWERUP_TYPES[this.type].color;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+
+      if (p.solid) {
+        // RETRO: marco cuadrado de bloques de 3 px y el icono fijo, sin girar
+        const s = this.radius;
+        ctx.fillRect(-s, -s, s * 2, 3);
+        ctx.fillRect(-s, s - 3, s * 2, 3);
+        ctx.fillRect(-s, -s, 3, s * 2);
+        ctx.fillRect(s - 3, -s, 3, s * 2);
+        ctx.lineWidth = 2;
+        ctx.lineCap = "square";
+        ctx.lineJoin = "miter";
+        this.drawIcon();
+        ctx.restore();
+        return;
+      }
+
       ctx.lineWidth = 1.5;
       ctx.lineJoin = "round";
+      glow(color, 0.8);
 
       // Anillo pulsante
       const r = this.radius + Math.sin(this.rot * 3) * 1.5;
@@ -426,13 +562,36 @@ function startGame(
       // Parpadeo durante invencibilidad de reaparición
       if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
 
+      const p = pal();
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.angle);
       // El casco toma el color del TURBO mientras dura
-      ctx.strokeStyle = effects.boost > 0 ? POWERUP_TYPES.boost.color : "#fff";
-      ctx.lineWidth = 1.5;
-      ctx.lineJoin = "round";
+      const hull = effects.boost > 0 ? powerupColor("boost") : p.ship;
+
+      // Llama del propulsor, por detrás del casco
+      if (this.thrusting && Math.random() > 0.35) {
+        const len = effects.boost > 0 ? rand(14, 26) : rand(6, 14);
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(-8, -4);
+        ctx.lineTo(-8 - len, 0);
+        ctx.lineTo(-8, 4);
+        if (p.solid) {
+          ctx.fillStyle = p.flame[1];
+          ctx.fill();
+        } else {
+          const grad = ctx.createLinearGradient(-8, 0, -8 - len, 0);
+          grad.addColorStop(0, p.flame[0]);
+          grad.addColorStop(1, p.flame[1]);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.5;
+          ctx.lineJoin = "round";
+          glow(p.flame[1], 0.8);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
 
       // Silueta clásica: triángulo con muesca trasera
       ctx.beginPath();
@@ -441,16 +600,14 @@ function startGame(
       ctx.lineTo(-7, 0); // muesca trasera
       ctx.lineTo(-12, 9); // ala derecha
       ctx.closePath();
-      ctx.stroke();
-
-      // Llama del propulsor
-      if (this.thrusting && Math.random() > 0.35) {
-        const len = effects.boost > 0 ? rand(14, 26) : rand(6, 14);
-        ctx.beginPath();
-        ctx.moveTo(-8, -4);
-        ctx.lineTo(-8 - len, 0);
-        ctx.lineTo(-8, 4);
-        ctx.strokeStyle = "rgba(255, 130, 0, 0.85)";
+      if (p.solid) {
+        ctx.fillStyle = hull;
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = hull;
+        ctx.lineWidth = p.glow > 0 ? 2 : 1.5;
+        ctx.lineJoin = "round";
+        glow(hull);
         ctx.stroke();
       }
 
@@ -487,13 +644,24 @@ function startGame(
     }
 
     draw() {
+      const p = pal();
+      if (p.solid) {
+        // RETRO: píxel cuadrado a opacidad plena hasta que se apaga de golpe
+        ctx.fillStyle = `rgb(${p.particle})`;
+        ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 1, 3, 3);
+        return;
+      }
       const alpha = this.ttl / this.life;
-      ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
-      ctx.lineWidth = 1;
+      const color = `rgba(${p.particle},${alpha.toFixed(2)})`;
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = p.glow > 0 ? 1.5 : 1;
+      glow(color, 0.5);
       ctx.beginPath();
       ctx.moveTo(this.x, this.y);
       ctx.lineTo(this.x - this.vx * 0.05, this.y - this.vy * 0.05);
       ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -718,10 +886,12 @@ function startGame(
     if (effects.shield < 1.5 && Math.floor(effects.shield * 10) % 2 === 0) return;
 
     const t = performance.now() / 1000;
+    const color = powerupColor("shield");
     ctx.save();
     ctx.translate(ship.x, ship.y);
-    ctx.strokeStyle = POWERUP_TYPES.shield.color;
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = pal().solid ? 3 : 1.5;
+    glow(color);
     ctx.beginPath();
     ctx.arc(0, 0, ship.radius + 8 + Math.sin(t * 6) * 1.5, 0, Math.PI * 2);
     ctx.stroke();
@@ -731,19 +901,23 @@ function startGame(
   // Puntuación, nivel y vidas solo se muestran en el HUD de la plataforma; en
   // el canvas quedan únicamente los efectos activos con su cuenta atrás.
   function drawHUD() {
-    ctx.font = "14px monospace";
+    ctx.save();
+    ctx.font = pal().solid ? "bold 14px monospace" : "14px monospace";
     ctx.textAlign = "center";
     let row = 0;
     for (const type of Object.keys(effects) as EffectType[]) {
       if (effects[type] <= 0) continue;
-      ctx.fillStyle = POWERUP_TYPES[type].color;
+      const color = powerupColor(type);
+      ctx.fillStyle = color;
+      glow(color, 0.5);
       ctx.fillText(`${POWERUP_TYPES[type].label} ${effects[type].toFixed(1)}s`, W / 2, 26 + row * 18);
       row++;
     }
+    ctx.restore();
   }
 
   function draw() {
-    ctx.fillStyle = "#000";
+    ctx.fillStyle = pal().bg;
     ctx.fillRect(0, 0, W, H);
 
     particles.forEach((p) => p.draw());

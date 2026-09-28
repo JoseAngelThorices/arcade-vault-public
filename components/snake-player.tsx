@@ -14,6 +14,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { readPlayerName, writePlayerName } from "@/lib/player-name";
 import { normalizeName, useSession } from "@/lib/session";
+import { useSkin } from "@/lib/skins";
+import SkinPicker from "@/components/skin-picker";
 import { createClient } from "@/lib/supabase/client";
 import type { GameRow } from "@/lib/supabase/types";
 
@@ -38,6 +40,9 @@ export default function SnakePlayer({ game }: { game: GameRow }) {
   const [name, setName] = useState<string | null>(null);
   // Cambiarla remonta el canvas: partida nueva desde cero.
   const [run, setRun] = useState(0);
+  // Cambiarla no remonta el canvas: el motor la lee en cada frame. Sin nada
+  // guardado, el juego arranca con su aspecto original.
+  const [skin, setSkin] = useSkin(game.id, "neon");
 
   const playerName = ready && user ? user.name : "INVITADO";
   const scoreName = name ?? playerName;
@@ -102,6 +107,7 @@ export default function SnakePlayer({ game }: { game: GameRow }) {
         </div>
 
         <div className="hud-actions">
+          <SkinPicker skin={skin} onChange={setSkin} />
           <button className="btn yellow" onClick={() => setPaused((p) => !p)} disabled={over}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
@@ -121,6 +127,7 @@ export default function SnakePlayer({ game }: { game: GameRow }) {
             <SnakeGame
               key={run}
               paused={paused || over}
+              skin={skin}
               onScoreChange={setScore}
               onLengthChange={setLength}
               onLevelChange={setLevel}

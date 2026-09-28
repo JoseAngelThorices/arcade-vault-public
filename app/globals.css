@@ -700,7 +700,28 @@
   .hud-stat .v { font-family: var(--pixel); font-size: 16px; color: var(--cyan); text-shadow: 0 0 6px rgba(0,245,255,0.5); }
   .hud-stat.lives .v { color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.5); }
   .hud-stat.level .v { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
-  .hud-actions { display: flex; gap: 10px; }
+  .hud-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* Selector de skin del reproductor: tres segmentos, el activo encendido
+     con el acento de su skin. */
+  .skin-picker { display: flex; border: 1px solid var(--line); }
+  .skin-opt {
+    padding: 10px 12px;
+    font-family: var(--pixel);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    background: transparent;
+    color: var(--ink-faint);
+    border: 0;
+    cursor: pointer;
+    transition: color 160ms, background 160ms, text-shadow 160ms;
+  }
+  .skin-opt + .skin-opt { border-left: 1px solid var(--line); }
+  .skin-opt:hover { color: var(--ink); }
+  .skin-opt:focus-visible { outline: 1px solid var(--cyan); outline-offset: -3px; }
+  .skin-opt[aria-pressed="true"].skin-neon { color: var(--cyan); background: rgba(0,245,255,0.1); text-shadow: 0 0 6px rgba(0,245,255,0.7); }
+  .skin-opt[aria-pressed="true"].skin-retro { color: var(--yellow); background: rgba(245,255,0,0.08); }
+  .skin-opt[aria-pressed="true"].skin-clasico { color: #fff; background: rgba(255,255,255,0.08); }
 
   .crt {
     position: relative;
