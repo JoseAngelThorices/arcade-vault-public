@@ -38,6 +38,7 @@ Cada funcionalidad pasa por un spec en `specs/NN-<slug>.md` (en español, con ca
 | 05 | Juego canvas Asteroids |
 | 06 | Tablas `games` y `scores` en Supabase; clasificaciones reales |
 | 07–09 | Juegos canvas Tetris, Arkanoid y Snake |
+| 10 | Controles táctiles en móvil: gamepad virtual (`components/mobile-gamepad.tsx`) en los reproductores de los cuatro juegos |
 
 Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `.agents/skills/`, registrados en `skills-lock.json`):
 
@@ -52,6 +53,7 @@ Agentes del proyecto (en `.claude/agents/`):
 - **`@game-planner`** — planifica qué juego construir a continuación. Lee `implemented-games.md`, las carpetas reales de los juegos, `specs/` y su to-do, y propone de 1 a 3 candidatos ordenados por diversidad de categorías, factibilidad en canvas 2D y reconocimiento clásico. Nunca repite un juego que ya esté en el to-do. Su memoria persistente es `references/game-suggestions-todo.md` (Sugeridos / Aceptados / Implementados / Descartados); solo escribe ese fichero y nunca escribe código ni specs. Flujo típico: `@game-planner` → elegir candidato → `/add-game` → `/spec-impl`.
 - **`@game-jam`** — a partir de un tema, diseña un juego nuevo sin hacer preguntas y escribe al menos dos specs (`01-<id>-core.md` + `02-<id>-<feature>.md`) en `specs/game-jam/<id>/`, en estado `Borrador`. Nunca escribe código. `/spec-impl` solo busca en `specs/`, así que para implementar un spec hay que promocionarlo antes a `specs/NN-<slug>.md`.
 - **`@skin-designer`** — audita que cada juego implementado tenga sus tres skins (NEÓN, RETRO y CLÁSICO), con selector en el reproductor que arranca siempre en RETRO (`useSkin()` de `lib/skins.ts`, sin persistencia). Cita la evidencia con `ruta:línea`, propone paleta y estilo de dibujo para las skins que falten y mantiene la matriz en `references/game-with-themes.md`, que es el único fichero que escribe; nunca escribe código ni specs. Flujo típico: `@skin-designer` → `/spec` → `/spec-impl`.
+- **`@mobile-porter`** — aplica los controles táctiles de SPEC 10 a un juego que aún no los tenga: añade `KEY_MAP` (valores `code` que el motor ya acepta, citados con `ruta:línea`), `max-md:hidden` en `.player-hud` y `<MobileGamepad>` tras el CRT. Solo edita `components/<id>-player.tsx`; nunca toca el motor, `mobile-gamepad.tsx`, `globals.css` ni otros juegos. Un juego por invocación; sin `Bash`, así que lint, tipos y build los ejecuta el usuario.
 
 Implementa los specs paso a paso: termina un paso, para y pregunta antes del siguiente.
 
