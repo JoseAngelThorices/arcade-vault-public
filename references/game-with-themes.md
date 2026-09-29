@@ -1,16 +1,18 @@
 # Auditoría de skins
 
 > Mantenido por el agente `skin-designer`. No editar manualmente sin avisar al agente.
-> Requisitos: skins NEÓN / RETRO / CLÁSICO en el motor, selector en el reproductor y persistencia en `av_skin_<id>`.
+> Requisitos: skins NEÓN / RETRO / CLÁSICO en el motor, selector en el reproductor que arranca siempre en RETRO (`useSkin()` de `lib/skins.ts`, sin persistencia).
+> Nota 2026-09-29: `lib/skins.ts` ya no persiste (`DEFAULT_SKIN = "retro"`, sin `localStorage`). Las filas de `asteroids`, `tetris`, `arkanoid` y `snake` se auditaron con el criterio anterior (`av_skin_<id>`); su columna de arranque queda `—` hasta re-auditarlas.
 
 ## Matriz
 
-| ID          | NEÓN | RETRO | CLÁSICO | Selector | Persistencia | Última auditoría |
-| ----------- | ---- | ----- | ------- | -------- | ------------ | ---------------- |
-| `asteroids` | ✅   | ✅    | ✅      | ✅       | ✅           | 2026-09-28        |
-| `tetris`    | ✅   | ✅    | ✅      | ✅       | ✅           | 2026-09-28        |
-| `arkanoid`  | ✅   | ✅    | ✅      | ✅       | ✅           | 2026-09-28        |
-| `snake`     | ✅   | ✅    | ✅      | ✅       | ✅           | 2026-09-28        |
+| ID          | NEÓN | RETRO | CLÁSICO | Selector | Arranque RETRO | Última auditoría |
+| ----------- | ---- | ----- | ------- | -------- | -------------- | ---------------- |
+| `asteroids` | ✅   | ✅    | ✅      | ✅       | —              | 2026-09-28        |
+| `tetris`    | ✅   | ✅    | ✅      | ✅       | —              | 2026-09-28        |
+| `arkanoid`  | ✅   | ✅    | ✅      | ✅       | —              | 2026-09-28        |
+| `snake`     | ✅   | ✅    | ✅      | ✅       | —              | 2026-09-28        |
+| `frogger`   | ✅   | ✅    | ✅      | ✅       | ✅             | 2026-09-29        |
 
 Leyenda: `✅` cumple · `🟡` parcial · `❌` no cumple · `—` sin auditar
 
@@ -79,10 +81,21 @@ Reutilizar tal cual `lib/skins.ts` (ya existe: `Skin`, `SKINS`, `DEFAULT_SKIN`, 
 - **Reproductor** (`components/snake-player.tsx`): importar `SKINS`, `useSkin` de `@/lib/skins`; añadir `const [skin, setSkin] = useSkin(game.id)`; insertar el bloque `.skin-picker` dentro de `hud-actions` (mismo JSX que `components/asteroids-player.tsx:105-116`) antes del botón de PAUSA; pasar `skin={skin}` a `<SnakeGame>` en `components/snake-player.tsx:121-132`.
 - **Persistencia**: sin cambios en `lib/skins.ts`; `useSkin("snake")` ya lee/escribe `av_skin_snake` con `try/catch` y usa `DEFAULT_SKIN = "clasico"` si no hay valor guardado o el navegador bloquea `localStorage`.
 
+### `frogger`
+
+- NEÓN: ✅ — `PALETTES.neon` (`components/games/frogger-game.tsx:82-103`): sapo `#00ff88` (`--green`), vehículos en `--magenta`/`--cyan`/`--yellow` (l.100), `glow: 12` (l.101). Glow real con `ctx.shadowColor`/`shadowBlur` en nenúfares (l.494-495), vehículos (l.553-555) y sapo (l.583-584). Fondo oscuro (agua `#041a33`, asfalto `#15151f`), legible sobre `--bg`.
+- RETRO: ✅ — `PALETTES.retro` (`components/games/frogger-game.tsx:105-125`): paleta corta, `glow: 0` (l.123) y `topEdge: "rgba(255, 255, 255, 0.35)"` (l.124), aplicado como franja de 2 px por `block()` (l.440-447). Sin `shadowBlur` fuera de la rama `glow > 0`.
+- CLÁSICO: ✅ — `PALETTES.clasico` (`components/games/frogger-game.tsx:128-`): río azul marino `#000047`, asfalto `#000000`, aceras moradas `#6a2c91`, tortugas rojas `#e02020`; sin ondas ni líneas de carretera (`waves`/`roadLine` en `null`). Contraste correcto sobre `#0a0a0f` (marco CRT).
+- Selector: ✅ — `<SkinPicker skin={skin} onChange={setSkin} />` en `components/frogger-player.tsx:115` (textos NEÓN / RETRO / CLÁSICO desde `SKINS`, `lib/skins.ts:11-15`); el motor recibe `skin={skin}` por prop (`components/frogger-player.tsx:138`, `components/games/frogger-game.tsx:18,236`) y la lee cada frame vía `skinRef` (l.239-244, 274). También se pasa al gamepad móvil (`components/frogger-player.tsx:171-172`).
+- Arranque RETRO: ✅ — `useSkin()` sin argumentos (`components/frogger-player.tsx:53`); `lib/skins.ts:17,24-25` usa `useState(DEFAULT_SKIN)` con `DEFAULT_SKIN = "retro"`. Sin `localStorage` ni `av_skin_` en `components/frogger-player.tsx`, `components/games/frogger-game.tsx` ni `lib/skins.ts`.
+
+**Propuesta:** ninguna; el juego cumple los cuatro requisitos. Observaciones menores (no bloquean): en NEÓN tronco/tortugas/nenúfares (`#7a4a1f`, `#2e9e4f`, `#1f9e4a`) son tonos apagados sin glow, y el fondo de hierba `#0c3318` es más "verde oscuro" que negro; si se quiere más fidelidad neón, subir a `--yellow`/`--green` con contorno brillante. Retocar esto sería un spec opcional.
+
 ## Historial
 
 | Fecha | Alcance | Resumen |
 | ----- | ------- | ------- |
+| 2026-09-29 | `frogger` | Primera auditoría (SPEC 12): tres skins en `PALETTES`, `SkinPicker` en el HUD, `useSkin()` con arranque en RETRO sin persistencia. Matriz en ✅. Columna "Persistencia" sustituida por "Arranque RETRO"; los otros cuatro juegos quedan pendientes de re-auditar con el criterio nuevo. |
 | 2026-09-28 | todos | El selector pasa de tres botones en la barra de acciones a un desplegable "SKIN" dentro de las estadísticas del HUD. |
 | 2026-09-28 | `tetris`, `snake`, `arkanoid` | Implementadas las tres skins según la propuesta, con `SkinPicker` (`components/skin-picker.tsx`) y `useSkin(id, fallback)` de `lib/skins.ts`. Sin nada guardado cada juego arranca con su aspecto original (Tetris RETRO, Snake NEÓN, Arkanoid CLÁSICO). Tetris sin animación de limpieza de líneas; Arkanoid comparte las explosiones del spritesheet en las tres skins. |
 | 2026-09-28 | `asteroids` | Primera auditoría: sin sistema de skins. Implementadas después las tres skins, el selector y la persistencia `av_skin_asteroids` (`lib/skins.ts`); matriz en ✅. |
