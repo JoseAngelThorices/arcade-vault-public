@@ -270,6 +270,30 @@ function startGame(
     ctx.shadowBlur = blur;
   }
 
+  // Sprites con el glow de NEON horneado (ladrillos y escombros). Se rellenan
+  // la primera vez que se dibuja cada variante; RETRO y CLASICO no los usan.
+  // Margen alrededor del sprite para que el glow no se recorte.
+  const SPRITE_PAD = 20;
+  const glowSprites = new Map<string, HTMLCanvasElement>();
+  function glowSprite(
+    key: string,
+    w: number,
+    h: number,
+    paint: (c: CanvasRenderingContext2D) => void,
+  ) {
+    let s = glowSprites.get(key);
+    if (!s) {
+      s = document.createElement("canvas");
+      s.width = w + SPRITE_PAD * 2;
+      s.height = h + SPRITE_PAD * 2;
+      const c = s.getContext("2d")!;
+      c.translate(SPRITE_PAD, SPRITE_PAD);
+      paint(c);
+      glowSprites.set(key, s);
+    }
+    return s;
+  }
+
   // ── Assets ──────────────────────────────────────────────────────────────────
   let sheet: HTMLImageElement | null = null;
   const sounds = {
@@ -588,6 +612,18 @@ function startGame(
       return;
     }
     const [fill, edge] = sh.bricks[brick.color];
+    if (pal().glow > 0) {
+      // NEON: cuerpo con glow horneado (sin franja superior, edge es null)
+      const blur = pal().glow * 0.6;
+      const sprite = glowSprite(`brick:${fill}`, BRICK_W, BRICK_H, (c) => {
+        c.fillStyle = fill;
+        c.shadowColor = fill;
+        c.shadowBlur = blur;
+        c.fillRect(2, 2, BRICK_W - 4, BRICK_H - 4);
+      });
+      ctx.drawImage(sprite, brick.x - SPRITE_PAD, brick.y - SPRITE_PAD);
+      return;
+    }
     ctx.save();
     ctx.fillStyle = fill;
     glow(fill, 0.6);
@@ -670,6 +706,20 @@ function startGame(
     // Escombros del bloque roto. RETRO los apaga de golpe, sin desvanecido.
     for (const pt of state.particles) {
       const color = p.shapes ? p.shapes.bricks[pt.color][0] : PARTICLE_COLORS[pt.color];
+      if (p.glow > 0) {
+        // NEON: escombro con glow horneado; solo cambia el alfa
+        const blur = p.glow * 0.6;
+        const sprite = glowSprite(`particle:${color}`, PARTICLE_SIZE, PARTICLE_SIZE, (c) => {
+          c.fillStyle = color;
+          c.shadowColor = color;
+          c.shadowBlur = blur;
+          c.fillRect(0, 0, PARTICLE_SIZE, PARTICLE_SIZE);
+        });
+        ctx.globalAlpha = Math.max(0, 1 - (now - pt.startTime) / PARTICLE_LIFE);
+        ctx.drawImage(sprite, Math.round(pt.x) - SPRITE_PAD, Math.round(pt.y) - SPRITE_PAD);
+        ctx.globalAlpha = 1;
+        continue;
+      }
       ctx.save();
       ctx.globalAlpha = p.fadeParticles ? Math.max(0, 1 - (now - pt.startTime) / PARTICLE_LIFE) : 1;
       ctx.fillStyle = color;
@@ -796,13 +846,24 @@ function startGame(
   let lastTime = 0;
   let frame = 0;
   let disposed = false;
+  // Skin del ultimo frame pintado en pausa: mientras no cambie, el canvas
+  // congelado sigue valiendo y no hace falta repintarlo.
+  let pausedSkin: Skin | null = null;
 
   function loop(now: number) {
     const dt = Math.min((now - lastTime) / 1000, MAX_DT);
     lastTime = now;
 
-    if (!pausedRef.current) update(dt, now);
-    draw(now);
+    if (pausedRef.current) {
+      if (pausedSkin !== skinRef.current) {
+        draw(now);
+        pausedSkin = skinRef.current;
+      }
+    } else {
+      pausedSkin = null;
+      update(dt, now);
+      draw(now);
+    }
     notify();
 
     if (state.status !== "gameover") frame = requestAnimationFrame(loop);

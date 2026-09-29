@@ -322,6 +322,9 @@ function startGame(
 
   // ── PowerUps ────────────────────────────────────────────────────────────────
   const TRIPLE_SPREAD = 0.22; // rad entre balas del abanico
+  // Constantes del dibujo de los iconos, para no crear arrays en cada frame
+  const TRIPLE_ICON_ANGLES = [-TRIPLE_SPREAD * 2, 0, TRIPLE_SPREAD * 2];
+  const BOOST_ICON_DX = [-4, 1];
   const DROP_CHANCE = 0.2; // probabilidad base por asteroide destruido
   const SLOW_FACTOR = 0.5; // los asteroides se mueven a la mitad
   const BOOST_THRUST = 2.2; // multiplicador de aceleración (y de velocidad máx.)
@@ -427,7 +430,7 @@ function startGame(
     drawIcon() {
       if (this.type === "triple") {
         // Tres trazos en abanico
-        for (const a of [-TRIPLE_SPREAD * 2, 0, TRIPLE_SPREAD * 2]) {
+        for (const a of TRIPLE_ICON_ANGLES) {
           ctx.beginPath();
           ctx.moveTo(Math.cos(a) * 2, Math.sin(a) * 2);
           ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8);
@@ -461,7 +464,7 @@ function startGame(
 
       if (this.type === "boost") {
         // Doble galón apuntando al frente
-        for (const dx of [-4, 1]) {
+        for (const dx of BOOST_ICON_DX) {
           ctx.beginPath();
           ctx.moveTo(dx, -6);
           ctx.lineTo(dx + 5, 0);
@@ -931,6 +934,9 @@ function startGame(
   // ── Loop principal ──────────────────────────────────────────────────────────
   let lastTime: number | null = null;
   let frame = 0;
+  // Skin del ultimo frame pintado en pausa: mientras no cambie, el canvas
+  // congelado sigue valiendo y no hace falta repintarlo.
+  let pausedSkin: Skin | null = null;
 
   function loop(ts: number) {
     const dt = lastTime === null ? 0 : Math.min((ts - lastTime) / 1000, 0.05);
@@ -938,12 +944,18 @@ function startGame(
     if (pausedRef.current) {
       // Lo pulsado durante la pausa no debe dispararse al reanudar
       for (const k of Object.keys(justPressed)) justPressed[k] = false;
+      if (pausedSkin !== skinRef.current) {
+        draw();
+        pausedSkin = skinRef.current;
+      }
     } else {
+      pausedSkin = null;
       update(dt);
       notify();
+      draw();
     }
-    draw();
-    frame = requestAnimationFrame(loop);
+    // Con la partida terminada el canvas ya no cambia: se para el bucle
+    if (state !== "gameover") frame = requestAnimationFrame(loop);
   }
 
   initGame();

@@ -140,6 +140,9 @@ const DELTA: Record<Dir, Cell> = {
 
 const OPPOSITE: Record<Dir, Dir> = { up: "down", down: "up", left: "right", right: "left" };
 
+// Lados de los dos ojos; constante para no crear un array en cada frame.
+const EYE_SIDES = [-1, 1];
+
 const KEY_DIR: Record<string, Dir> = {
   ArrowUp: "up",
   KeyW: "up",
@@ -358,7 +361,7 @@ function startGame(
     const ahead = 5;
     const side = 6;
     ctx.fillStyle = p.eye;
-    for (const s of [-1, 1]) {
+    for (const s of EYE_SIDES) {
       const ex = cx + d.x * ahead + (d.y !== 0 ? s * side : 0);
       const ey = cy + d.y * ahead + (d.x !== 0 ? s * side : 0);
       ctx.fillRect(Math.round(ex - eye / 2), Math.round(ey - eye / 2), eye, eye);
@@ -449,6 +452,9 @@ function startGame(
   let frame = 0;
   let wasPaused = false;
   let disposed = false;
+  // Skin del ultimo frame pintado en pausa: mientras no cambie, el canvas
+  // congelado sigue valiendo y no hace falta repintarlo.
+  let pausedSkin: Skin | null = null;
 
   function loop(now: number) {
     if (pausedRef.current) {
@@ -465,7 +471,15 @@ function startGame(
       }
     }
 
-    draw();
+    if (pausedRef.current) {
+      if (pausedSkin !== skinRef.current) {
+        draw();
+        pausedSkin = skinRef.current;
+      }
+    } else {
+      pausedSkin = null;
+      draw();
+    }
     notify();
 
     if (!state.over) frame = requestAnimationFrame(loop);

@@ -83,6 +83,19 @@ const PALETTES: Record<Skin, Palette> = {
 
 const GHOST_ALPHA = 0.2;
 
+// Margen alrededor del sprite para que el glow no se recorte.
+const SPRITE_PAD = 20;
+
+function bakeGlowSprite(w: number, h: number, paint: (c: CanvasRenderingContext2D) => void) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w + SPRITE_PAD * 2;
+  canvas.height = h + SPRITE_PAD * 2;
+  const c = canvas.getContext("2d")!;
+  c.translate(SPRITE_PAD, SPRITE_PAD);
+  paint(c);
+  return canvas;
+}
+
 export default function TetrisGame({ paused, skin, ...callbacks }: TetrisGameProps) {
   const boardRef = useRef<HTMLCanvasElement>(null);
   const nextRef = useRef<HTMLCanvasElement>(null);
@@ -261,16 +274,30 @@ function startGame(
   }
 
   // ── Dibujo ──────────────────────────────────────────────────────────────────
+  // Sprites con glow de NEON, horneados la primera vez que se usa cada variante.
+  const glowSprites = new Map<string, HTMLCanvasElement>();
+  const glowSprite = (key: string, w: number, h: number, paint: (c: CanvasRenderingContext2D) => void) => {
+    let s = glowSprites.get(key);
+    if (!s) glowSprites.set(key, (s = bakeGlowSprite(w, h, paint)));
+    return s;
+  };
+
   function drawBlock(c: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
     const style = pal().block;
+    if (style === "glow") {
+      const sprite = glowSprite(`block:${color}:${size}`, size, size, (s) => {
+        s.fillStyle = color;
+        s.shadowColor = color;
+        s.shadowBlur = 10;
+        s.fillRect(2, 2, size - 4, size - 4);
+      });
+      c.drawImage(sprite, x - SPRITE_PAD, y - SPRITE_PAD);
+      return;
+    }
     c.save();
     c.fillStyle = color;
 
-    if (style === "glow") {
-      c.shadowColor = color;
-      c.shadowBlur = 10;
-      c.fillRect(x + 2, y + 2, size - 4, size - 4);
-    } else if (style === "flat") {
+    if (style === "flat") {
       c.fillRect(x + 1, y + 1, size - 2, size - 2);
       c.fillStyle = "rgba(255,255,255,0.12)"; // highlight
       c.fillRect(x + 1, y + 1, size - 2, 4);
@@ -298,11 +325,14 @@ function startGame(
       ctx.fillRect(x + 1, y + 1, BLOCK - 2, BLOCK - 2);
     } else if (style === "glow") {
       ctx.globalAlpha = 0.45;
-      ctx.strokeStyle = color;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 6;
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(x + 3.5, y + 3.5, BLOCK - 7, BLOCK - 7);
+      const sprite = glowSprite(`ghost:${color}`, BLOCK, BLOCK, (s) => {
+        s.strokeStyle = color;
+        s.shadowColor = color;
+        s.shadowBlur = 6;
+        s.lineWidth = 1.5;
+        s.strokeRect(3.5, 3.5, BLOCK - 7, BLOCK - 7);
+      });
+      ctx.drawImage(sprite, x - SPRITE_PAD, y - SPRITE_PAD);
     } else {
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1;
@@ -437,6 +467,9 @@ function startGame(
   // ── Bucle principal ─────────────────────────────────────────────────────────
   let lastTime: number | null = null;
   let frame = 0;
+  // Skin del ultimo frame pintado en pausa: mientras no cambie, el canvas
+  // congelado sigue valiendo y no hace falta repintarlo.
+  let pausedSkin: Skin | null = null;
 
   function loop(ts: number) {
     const dt = lastTime === null ? 0 : ts - lastTime;
@@ -449,7 +482,15 @@ function startGame(
         else lockPiece();
       }
     }
-    draw();
+    if (pausedRef.current) {
+      if (pausedSkin !== skinRef.current) {
+        draw();
+        pausedSkin = skinRef.current;
+      }
+    } else {
+      pausedSkin = null;
+      draw();
+    }
     notify();
     if (!gameOver) frame = requestAnimationFrame(loop);
   }

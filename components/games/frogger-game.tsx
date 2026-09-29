@@ -233,6 +233,20 @@ const ANGLE: Record<Dir, number> = {
   left: -Math.PI / 2,
 };
 
+// Margen alrededor del sprite para que el glow no se recorte.
+const SPRITE_PAD = 20;
+
+/** Pinta una forma con su glow en un canvas offscreen (coordenadas locales). */
+function bakeGlowSprite(w: number, h: number, paint: (c: CanvasRenderingContext2D) => void) {
+  const canvas = document.createElement("canvas");
+  canvas.width = w + SPRITE_PAD * 2;
+  canvas.height = h + SPRITE_PAD * 2;
+  const c = canvas.getContext("2d")!;
+  c.translate(SPRITE_PAD, SPRITE_PAD);
+  paint(c);
+  return canvas;
+}
+
 export default function FroggerGame({ paused, skin, ...callbacks }: FroggerGameProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pausedRef = useRef(paused);
@@ -436,6 +450,19 @@ function startGame(
   }
 
   // ── Dibujo ──────────────────────────────────────────────────────────────────
+  // Sprites con glow de NEON, rellenados la primera vez que se dibuja cada variante.
+  const glowSprites = new Map<string, HTMLCanvasElement>();
+  const glowSprite = (
+    key: string,
+    w: number,
+    h: number,
+    paint: (c: CanvasRenderingContext2D) => void,
+  ) => {
+    let s = glowSprites.get(key);
+    if (!s) glowSprites.set(key, (s = bakeGlowSprite(w, h, paint)));
+    return s;
+  };
+
   /** Rectangulo con la franja clara superior de RETRO, si la skin la tiene. */
   function block(x: number, y: number, w: number, h: number, color: string) {
     const p = pal();
@@ -549,13 +576,19 @@ function startGame(
   function drawVehicle(x: number, y: number, w: number, lane: Lane) {
     const p = pal();
     const color = p.vehicles[lane.row];
-    ctx.save();
     if (p.glow > 0) {
-      ctx.shadowColor = color;
-      ctx.shadowBlur = p.glow;
+      // NEON: el cuerpo con glow se hornea una vez por color y ancho.
+      const glow = p.glow;
+      const sprite = glowSprite(`veh:${color}:${w}:${glow}`, w, CELL, (c) => {
+        c.shadowColor = color;
+        c.shadowBlur = glow;
+        c.fillStyle = color;
+        c.fillRect(3, 7, w - 6, CELL - 14);
+      });
+      ctx.drawImage(sprite, x - SPRITE_PAD, y - SPRITE_PAD);
+    } else {
+      block(x + 3, y + 7, w - 6, CELL - 14, color);
     }
-    block(x + 3, y + 7, w - 6, CELL - 14, color);
-    ctx.restore();
 
     // Cabina del camion: una franja oscura separa la cabeza del remolque
     if (lane.variant === "truck") {
@@ -662,6 +695,9 @@ function startGame(
   // ── Bucle principal ─────────────────────────────────────────────────────────
   let frame = 0;
   let last = performance.now();
+  // Skin del ultimo frame pintado en pausa: mientras no cambie, el canvas
+  // congelado sigue valiendo y no hace falta repintarlo.
+  let pausedSkin: Skin | null = null;
 
   function loop(now: number) {
     // Tope de 50 ms por frame: tras un cambio de pestana nada da un salto brusco.
@@ -675,7 +711,15 @@ function startGame(
       if (!state.over) checkRoadCollision();
     }
 
-    draw(now);
+    if (pausedRef.current) {
+      if (pausedSkin !== skinRef.current) {
+        draw(now);
+        pausedSkin = skinRef.current;
+      }
+    } else {
+      pausedSkin = null;
+      draw(now);
+    }
     notify();
 
     if (!state.over) frame = requestAnimationFrame(loop);
