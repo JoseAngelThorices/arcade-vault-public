@@ -1,6 +1,6 @@
 # SPEC 08 — Integración del juego Arkanoid
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-24
 > **Objetivo:** Integrar Arkanoid (`references/start-games/04-Arkanoid/game.js`) como juego jugable con ID
