@@ -1,6 +1,6 @@
 # SPEC 07 — Integración del juego Tetris
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-24
 > **Objetivo:** Integrar Tetris (`references/start-games/03-tetris/game.js`) como juego jugable con ID
