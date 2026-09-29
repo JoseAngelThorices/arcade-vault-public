@@ -1,6 +1,6 @@
-# SPEC — Integración del juego Frogger (motor y clasificación)
+# SPEC 12 — Integración del juego Frogger (motor y clasificación)
 
-> **Estado:** Borrador
+> **Estado:** Aprobado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-28
 > **Objetivo:** Crear desde cero Frogger como juego jugable con ID `frogger`: un sapo que cruza
@@ -121,7 +121,7 @@
 - Controles táctiles, ratón o mobile.
 - Actualización automática de `best` y `plays` en la tabla `games`.
 - Tortugas que se sumergen, peligros temporales en los nenúfares (serpiente/caimán) y moscas de
-  bonus: quedan para el spec complementario `02-frogger-hazards-bonus.md`.
+  bonus: quedan para un spec futuro.
 - Temporizador por vida o modo contrarreloj: la partida no tiene límite de tiempo en este spec.
 - Sonidos: no hay assets de audio para Frogger en este spec.
 - Assets de imagen: todo el arte se dibuja con primitivas de canvas, sin sprites.
@@ -406,7 +406,7 @@ No se introducen tablas nuevas. Se reutilizan `ScoreRow` de `lib/supabase/types.
   puntos moviéndose arriba y abajo sin arriesgarse a cruzar.
 
 - **No: temporizador por vida o modo contrarreloj en este spec.** Razón: se deja como feature
-  independiente en `02-frogger-hazards-bonus.md` para no mezclar dos sistemas de presión
+  independiente en un spec futuro para no mezclar dos sistemas de presión
   distintos (tráfico + reloj) en la primera versión jugable.
 
 - **No: tortugas que se sumergen, nenúfares con peligro temporal ni moscas de bonus en este
