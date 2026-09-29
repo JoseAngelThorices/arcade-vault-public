@@ -1,0 +1,225 @@
+"use client";
+
+// Reproductor de Frogger. Misma maquetacion que components/snake-player.tsx
+// (HUD, CRT y modal de fin de partida), con el canvas del juego en lugar de la
+// arena de relleno. Es cliente entero porque `ssr: false` solo se admite en
+// Client Components, y el canvas no existe en el servidor.
+//
+// Al guardar, la puntuacion se inserta en la tabla `scores` de Supabase y el
+// nombre se recuerda en `av_player_name` para la siguiente partida (SPEC 12).
+// Frogger tiene vidas de forma nativa: el HUD base no necesita sustituciones.
+//
+// En movil (< md) el HUD se oculta y el juego se maneja con el gamepad virtual
+// de debajo del CRT (SPEC 10).
+
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useState } from "react";
+import { readPlayerName, writePlayerName } from "@/lib/player-name";
+import { normalizeName, useSession } from "@/lib/session";
+import { useSkin } from "@/lib/skins";
+import SkinPicker from "@/components/skin-picker";
+import MobileGamepad, { type KeyMap } from "@/components/mobile-gamepad";
+import { createClient } from "@/lib/supabase/client";
+import type { GameRow } from "@/lib/supabase/types";
+
+const FroggerGame = dynamic(() => import("@/components/games/frogger-game"), {
+  ssr: false,
+});
+
+// Teclas del motor para cada boton del gamepad; A y B no tienen accion en
+// Frogger. Cada toque es un salto: el gamepad no autorrepite.
+const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+const INITIAL_LIVES = 3;
+
+export default function FroggerPlayer({ game }: { game: GameRow }) {
+  const { user, ready, saveScore } = useSession();
+  const [score, setScore] = useState(0);
+  const [lives, setLives] = useState(INITIAL_LIVES);
+  const [level, setLevel] = useState(1);
+  const [paused, setPaused] = useState(false);
+  const [over, setOver] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  // null mientras no haya nombre recordado ni editado, para que siga el nombre
+  // de la sesion cuando esta se termina de leer.
+  const [name, setName] = useState<string | null>(null);
+  // Cambiarla remonta el canvas: partida nueva desde cero.
+  const [run, setRun] = useState(0);
+  // Cambiarla no remonta el canvas: el motor la lee en cada frame. Arranca
+  // siempre en RETRO.
+  const [skin, setSkin] = useSkin();
+
+  const playerName = ready && user ? user.name : "INVITADO";
+  const scoreName = name ?? playerName;
+  const locked = saveStatus === "saving" || saveStatus === "saved";
+
+  /** Abre el modal con el nombre de la ultima puntuacion guardada, si lo hay. */
+  const openGameOver = () => {
+    const remembered = readPlayerName();
+    if (remembered) setName(normalizeName(remembered));
+    setOver(true);
+  };
+
+  const save = async () => {
+    const playerNameToSave = scoreName.trim();
+    if (!playerNameToSave || locked) return;
+    setSaveStatus("saving");
+
+    const { error } = await createClient()
+      .from("scores")
+      .insert({ game_id: game.id, player_name: playerNameToSave, score, user_id: null });
+
+    if (error) {
+      setSaveStatus("error");
+      return;
+    }
+    writePlayerName(playerNameToSave);
+    // Registro local de la sesion: alimenta "TU MEJOR MARCA" del Salón.
+    saveScore({ game: game.id, score, name: playerNameToSave });
+    setSaveStatus("saved");
+  };
+
+  const restart = () => {
+    setScore(0);
+    setLives(INITIAL_LIVES);
+    setLevel(1);
+    setOver(false);
+    setSaveStatus("idle");
+    setPaused(false);
+    setRun((r) => r + 1);
+  };
+
+  return (
+    <div className="av-player fade-in">
+      <div className="player-hud max-md:hidden">
+        <div className="hud-stats">
+          <div className="hud-stat player">
+            <div className="l">Jugador</div>
+            <div className="v">{playerName}</div>
+          </div>
+          <div className="hud-stat">
+            <div className="l">Puntuación</div>
+            <div className="v">{score.toLocaleString("es-ES")}</div>
+          </div>
+          <div className="hud-stat lives">
+            <div className="l">Vidas</div>
+            <div className="v">{lives.toLocaleString("es-ES")}</div>
+          </div>
+          <div className="hud-stat level">
+            <div className="l">Nivel</div>
+            <div className="v">{level.toLocaleString("es-ES")}</div>
+          </div>
+          <SkinPicker skin={skin} onChange={setSkin} />
+        </div>
+
+        <div className="hud-actions">
+          <button className="btn yellow" onClick={() => setPaused((p) => !p)} disabled={over}>
+            {paused ? "REANUDAR" : "PAUSA"}
+          </button>
+          <button className="btn magenta" onClick={openGameOver} disabled={over}>
+            FIN
+          </button>
+          <Link className="btn ghost" href={`/juego/${game.id}`}>
+            SALIR
+          </Link>
+        </div>
+      </div>
+
+      <div className="crt">
+        <div className="crt-screen">
+          {/* La pantalla y el canvas son 4:3: el tablero la llena entera. */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <FroggerGame
+              key={run}
+              paused={paused || over}
+              skin={skin}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
+              onPauseToggle={() => setPaused((p) => !p)}
+              onGameOver={(finalScore) => {
+                setScore(finalScore);
+                openGameOver();
+              }}
+            />
+          </div>
+          {paused && !over && (
+            <div className="crt-content crt-pause">
+              <div>
+                <div className="pixel neon-yellow">EN PAUSA</div>
+                <div className="pause-hint">PULSA REANUDAR O P PARA CONTINUAR</div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="crt-bottom">
+          <span className="led">SEÑAL OK</span>
+          <span>{game.title} · CRT-83 · 60 HZ</span>
+          <span>FLECHAS / WASD SALTAR · P PAUSA</span>
+        </div>
+      </div>
+
+      <MobileGamepad
+        keyMap={KEY_MAP}
+        paused={paused}
+        disabled={over}
+        onPauseToggle={() => setPaused((p) => !p)}
+        onEnd={openGameOver}
+        skin={skin}
+        onSkinChange={setSkin}
+      />
+
+      {over && (
+        <div className="modal-bd">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="av-over-title">
+            <h2 id="av-over-title">FIN DEL JUEGO</h2>
+            <div className="final-label">PUNTUACIÓN FINAL</div>
+            <div className="final">{score.toLocaleString("es-ES")}</div>
+
+            {saveStatus === "saved" ? (
+              <div className="toast-saved" role="status">
+                ▸ PUNTUACIÓN GUARDADA_
+              </div>
+            ) : (
+              <>
+                <div className="input-row">
+                  <input
+                    value={scoreName}
+                    onChange={(e) => setName(normalizeName(e.target.value))}
+                    placeholder="TUS INICIALES"
+                    aria-label="Nombre para la tabla de puntuaciones"
+                    disabled={locked}
+                  />
+                  <button
+                    className="btn yellow"
+                    onClick={() => void save()}
+                    disabled={locked || !scoreName.trim()}
+                  >
+                    {saveStatus === "saving" ? "GUARDANDO…" : "GUARDAR PUNTUACIÓN"}
+                  </button>
+                </div>
+                {saveStatus === "error" && (
+                  <p className="save-error" role="alert">
+                    No se pudo guardar la puntuación. Comprueba tu conexión y vuelve a intentarlo.
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="actions">
+              <button className="btn" onClick={restart}>
+                JUGAR DE NUEVO
+              </button>
+              <Link className="btn magenta" href="/juegos">
+                VOLVER AL VAULT
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
