@@ -44,6 +44,7 @@ Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `
 
 - **`/spec`** — escribe un spec nuevo sección a sección, con confirmación.
 - **`/spec-impl NN`** — implementa un spec. `specs/.spec-config.yml` tiene `AutoCreateBranch: true`, así que crea automáticamente una rama `spec-NN-<slug>`; el trabajo se integra en `main` mediante PR.
+- **`/spec-impl-game NN`** — como `/spec-impl` para un spec de juego, y al terminar encadena `@skin-designer` (auditoría de skins del juego nuevo) y `@mobile-porter` (gamepad táctil), con pausa antes de cada uno; cierra con lint + tipos.
 - **`/add-game`** — para un juego jugable con clasificación (desde `references/` o nuevo): hace preguntas y escribe `specs/NN-<id>-game.md` en `Borrador`; después se ejecuta con `/spec-impl`. Sigue el patrón de SPEC 05 + SPEC 06 y nunca escribe código.
 - **`supabase`** (en `.agents/skills/supabase/`) — guía de Supabase. El servidor MCP de Supabase está configurado en `.mcp.json` para la base de datos de este proyecto.
 - Usa siempre **`/frontend-design`** al construir interfaces.
