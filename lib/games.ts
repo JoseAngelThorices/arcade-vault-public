@@ -7,4 +7,5 @@ export const CATS = [
   "PUZZLE",
   "SHOOTER",
   "VERSUS",
+  "MAZE",
 ] as const satisfies readonly string[];

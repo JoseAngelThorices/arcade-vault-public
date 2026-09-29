@@ -118,7 +118,7 @@
   `scores`) ya cubren el juego nuevo. Endurecerlas es un spec futuro de seguridad.
 - Realtime: el leaderboard no se actualiza en vivo, solo al cargar la página.
 - Paginación del leaderboard: se muestran los top 10 fijos.
-- Controles táctiles, ratón o mobile.
+- Ratón.
 - Actualización automática de `best` y `plays` en la tabla `games`.
 - Tortugas que se sumergen, peligros temporales en los nenúfares (serpiente/caimán) y moscas de
   bonus: quedan para un spec futuro.
@@ -410,8 +410,8 @@ No se introducen tablas nuevas. Se reutilizan `ScoreRow` de `lib/supabase/types.
   distintos (tráfico + reloj) en la primera versión jugable.
 
 - **No: tortugas que se sumergen, nenúfares con peligro temporal ni moscas de bonus en este
-  spec.** Razón: son variaciones sobre la mecánica base; se documentan en el spec
-  complementario para mantener el alcance de este spec en "cruzar es posible y letal".
+  spec.** Razón: son variaciones sobre la mecánica base; quedan para un spec futuro para
+  mantener el alcance de este spec en "cruzar es posible y letal".
 
 - **Sí: reciclado infinito de carriles (wrap por el borde opuesto).** Razón: es el
   comportamiento estándar del género y evita comprobar bordes especiales para el spawn de
@@ -433,6 +433,11 @@ No se introducen tablas nuevas. Se reutilizan `ScoreRow` de `lib/supabase/types.
   Razón: la convención del proyecto liga la cobertura al `id` del juego (`cover-<id>`), y el
   `id` elegido es `frogger`, no `rana`; reutilizar una clase con nombre distinto rompería esa
   convención y confundiría a quien la lea más adelante.
+
+- **Desviación: `cover-frogger` claro y retro, no el neón oscuro del plan.** El CSS del paso 4
+  quedaba demasiado oscuro. Se sustituye por la escena del Frogger arcade en colores planos y
+  claros: orilla verde con nichos, río azul con troncos y tortugas, mediana de arena, carretera
+  gris con coches y líneas blancas, y la rana en la acera, en paleta NES. Sin `drop-shadow` neón.
 
 - **Sí: callbacks como interfaz de comunicación.** El componente canvas llama a
   `onScoreChange`, `onLivesChange`, `onLevelChange`, `onPauseToggle` y `onGameOver`. Razón:
@@ -457,3 +462,17 @@ No se introducen tablas nuevas. Se reutilizan `ScoreRow` de `lib/supabase/types.
 
 - **No: componente genérico `CanvasGame`.** Cada juego tiene su componente propio. Razón: YAGNI;
   los juegos difieren en HUD, entrada y assets.
+
+### Desviaciones durante la implementación
+
+- **Sí: la columna «Espaciado» de la tabla de carriles es la distancia entre el inicio de una
+  entidad y el de la siguiente** (periodo), no el hueco libre entre ellas. Razón: el río queda
+  cubierto al 40-60 % y se cruza con ritmo; con huecos libres quedaba al 25-37 %.
+- **Sí: tres skins (NEÓN, RETRO y CLÁSICO) con selector y arranque en RETRO**, aunque el spec no
+  las pedía. Razón: los otros cuatro juegos las tienen (`useSkin()` de `lib/skins.ts` +
+  `SkinPicker`) y Frogger debe verse igual. NEÓN es el aspecto descrito en «Aspecto»; RETRO usa
+  bloques sólidos sin glow con franja clara superior; CLÁSICO imita el arcade de 1981 (río azul
+  marino, carretera negra, aceras moradas, tortugas rojas).
+- **Sí: gamepad táctil en móvil (SPEC 10)**, aunque «Controles táctiles» estaba fuera de alcance.
+  Razón: paridad con los otros juegos. `KEY_MAP` con las cuatro flechas, `max-md:hidden` en
+  `.player-hud` y `<MobileGamepad>` tras el CRT, igual que `components/snake-player.tsx`.

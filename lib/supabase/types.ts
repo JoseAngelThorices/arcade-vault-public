@@ -6,7 +6,7 @@ export interface GameRow {
   title: string;
   short: string;
   long: string;
-  cat: "ARCADE" | "PUZZLE" | "SHOOTER";
+  cat: "ARCADE" | "PUZZLE" | "SHOOTER" | "MAZE";
   /** Clase CSS de la portada: "cover-rocas", … */
   cover: string;
   /** Variante de color del botón JUGAR. */

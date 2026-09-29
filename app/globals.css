@@ -697,6 +697,40 @@
     filter: drop-shadow(0 0 8px rgba(0,255,136,0.5));
   }
 
+  /* Frogger clásico en paleta NES: orilla con nichos, río, mediana de arena, carretera y acera */
+  .cover-frogger {
+    background: linear-gradient(180deg,
+      #58d854 0 12%, #3cbcfc 12% 46%, #fca044 46% 54%,
+      #5c5c7a 54% 89%, #fca044 89% 100%);
+  }
+  .cover-frogger::after {
+    content: "";
+    position: absolute; inset: 0;
+    background:
+      /* rana */
+      linear-gradient(#005800, #005800) 48.5% 92.5%/1.2% 1.6%,
+      linear-gradient(#005800, #005800) 51.5% 92.5%/1.2% 1.6%,
+      linear-gradient(#b8f818, #b8f818) 50% 95%/5% 8%,
+      /* coches */
+      linear-gradient(#f83800, #f83800) 12% 60%/11% 6%,
+      linear-gradient(#f8d878, #f8d878) 68% 60%/9% 6%,
+      linear-gradient(#fcfcfc, #fcfcfc) 35% 80%/13% 6%,
+      linear-gradient(#d800cc, #d800cc) 88% 80%/10% 6%,
+      /* líneas discontinuas del carril */
+      repeating-linear-gradient(90deg, #fcfcfc 0 6%, transparent 6% 12%) 0 71%/100% 2px,
+      /* troncos y tortugas */
+      linear-gradient(#ac7c00, #ac7c00) 6% 18%/32% 6%,
+      linear-gradient(#ac7c00, #ac7c00) 72% 18%/28% 6%,
+      radial-gradient(circle, #00a844 0 45%, transparent 50%) 40% 29%/5% 8%,
+      radial-gradient(circle, #00a844 0 45%, transparent 50%) 46% 29%/5% 8%,
+      radial-gradient(circle, #00a844 0 45%, transparent 50%) 52% 29%/5% 8%,
+      linear-gradient(#ac7c00, #ac7c00) 20% 40%/36% 6%,
+      linear-gradient(#ac7c00, #ac7c00) 90% 40%/22% 6%,
+      /* nichos de la orilla */
+      repeating-linear-gradient(90deg, transparent 0 8%, #0078f8 8% 14%, transparent 14% 20%) 0 0/100% 12%;
+    background-repeat: no-repeat;
+  }
+
   .cover-duelo { background: #0a0a18; }
   .cover-duelo::after {
     content: "";
