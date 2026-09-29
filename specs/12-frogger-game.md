@@ -1,6 +1,6 @@
 # SPEC 12 — Integración del juego Frogger (motor y clasificación)
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-09-28
 > **Objetivo:** Crear desde cero Frogger como juego jugable con ID `frogger`: un sapo que cruza
