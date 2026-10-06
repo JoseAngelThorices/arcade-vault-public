@@ -21,7 +21,7 @@ npx tsc --noEmit # comprobación de tipos (no hay alias en scripts)
 npx next typegen # regenera los tipos de rutas tras añadir/renombrar rutas
 ```
 
-El servidor de desarrollo se abre desde la IP de la LAN (`192.168.0.x`), así que `next.config.ts` define `allowedDevOrigins: ["192.168.0.*"]`. Sin eso, Next bloquea sus recursos de desarrollo para ese origen y React nunca hidrata: no lo quites.
+El servidor de desarrollo se abre desde la IP de la LAN (`192.168.0.x` o `192.168.18.x`), así que `next.config.ts` define `allowedDevOrigins: ["192.168.0.*", "192.168.18.*"]`. Sin eso, Next bloquea sus recursos de desarrollo para ese origen y React nunca hidrata: no lo quites.
 
 No hay test runner configurado: no existe script de test, framework ni fichero de test en el repo. Añadir uno es una decisión del proyecto; confirma la elección con el usuario primero.
 
