@@ -1,6 +1,6 @@
 # SPEC 13 — Autenticación con Supabase Auth
 
-> **Estado:** Borrador
+> **Estado:** Implementado
 > **Depende de:** 04-integracion-de-supabase · 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-10-05
 > **Objetivo:** Conectar la pantalla de acceso existente (`/acceso`) con Supabase Auth
@@ -231,22 +231,22 @@ supabase.auth.signUp({
 
 - [ ] `proxy.ts` refresca la sesión y nunca redirige.
 - [ ] `GET /acceso/callback` convierte `code` o `token_hash` en sesión y redirige a `next` (por defecto `/juegos`); un `next` absoluto se ignora.
-- [ ] `useSession()` expone `user: User | null`, `session`, `username`, `ready`, `signOut`, `saveScore` y `bestScoreFor`.
-- [ ] No queda ninguna referencia a `av_user` en `app/`, `components/` ni `lib/`.
-- [ ] Login con correo y contraseña correctos lleva a `/juegos` con sesión.
+- [x] `useSession()` expone `user: User | null`, `session`, `username`, `ready`, `signOut`, `saveScore` y `bestScoreFor`.
+- [x] No queda ninguna referencia a `av_user` en `app/`, `components/` ni `lib/`.
+- [x] Login con correo y contraseña correctos lleva a `/juegos` con sesión.
 - [ ] Login con credenciales incorrectas muestra un mensaje inline en español, sin crash.
 - [ ] Registro válido muestra "Revisa tu correo" sin redirigir; registro inválido (contraseñas distintas, normas sin aceptar) no llama a Supabase.
 - [ ] El enlace de confirmación activa la sesión.
 - [ ] "¿Olvidaste tu contraseña?" envía el correo y muestra la confirmación.
 - [ ] `/acceso/nueva-clave` permite cambiar la contraseña y la nueva funciona.
-- [ ] El acceso no muestra botones de Google ni GitHub.
-- [ ] El botón "JUGAR COMO INVITADO" ya no existe.
+- [x] El acceso no muestra botones de Google ni GitHub.
+- [x] El botón "JUGAR COMO INVITADO" ya no existe.
 - [ ] Con sesión, `/acceso` muestra la cuenta y "CERRAR SESIÓN".
 - [ ] El nav muestra avatar + alias + "CERRAR SESIÓN" con sesión, y "Iniciar Sesión" sin ella.
 - [ ] Una cuenta sin alias propio tiene `username` derivado y no vacío.
 - [ ] En los cinco reproductores, el modal pre-rellena el alias del usuario autenticado.
-- [ ] Los scores de usuarios autenticados tienen `user_id`; los de invitados, `null`.
-- [ ] `npm run lint`, `npx tsc --noEmit` y `npm run build` terminan sin errores.
+- [x] Los scores de usuarios autenticados tienen `user_id`; los de invitados, `null`.
+- [x] `npm run lint`, `npx tsc --noEmit` y `npm run build` terminan sin errores.
 
 ---
 
@@ -309,6 +309,31 @@ supabase.auth.signUp({
 
 - **No: edición de perfil en este spec**. Razón: amplía el alcance más allá de la
   autenticación básica.
+
+---
+
+### Verificación (2026-10-06)
+
+Marcados arriba solo los criterios comprobados. Lint, tipos y build pasan. El registro
+con una cuenta de Gmail funcionó de principio a fin: llegó el correo de confirmación, la
+cuenta quedó confirmada en `auth.users`, el login funcionó y la partida de Arkanoid se
+guardó con su `user_id`; los scores antiguos de invitados siguen con `user_id = null`.
+
+Sin verificar a mano:
+
+- El enlace de confirmación **no** abre sesión por sí solo: sin Redirect URLs cae en la
+  Site URL y se entra después con correo y contraseña (ver Riesgos).
+- La recuperación de contraseña y `/acceso/nueva-clave` no se completan sin Redirect
+  URLs (ver Riesgos).
+- Cerrar sesión, el mensaje de credenciales incorrectas, la vista de cuenta y el
+  pre-relleno del alias en los cinco reproductores no se han probado uno a uno.
+
+### Desviaciones durante la implementación
+
+- **Sin OAuth y sin configuración manual de Supabase** (ver Decisiones).
+- **`allowedDevOrigins` ampliado a `192.168.18.*`** (commit `fix: allow 192.168.18.* as
+  dev origin`): el servidor de desarrollo se abrió desde otra red, React no hidrataba y
+  el formulario no enviaba nada a Supabase.
 
 ---
 
