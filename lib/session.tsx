@@ -52,9 +52,9 @@ export function normalizeName(name: string): string {
 }
 
 /**
- * Alias del usuario. Los registros por correo lo guardan en
- * `user_metadata.username`; los de OAuth no, asi que se cae al login de
- * GitHub, al nombre de Google o a la parte local del correo.
+ * Alias del usuario. El registro lo guarda en `user_metadata.username`; si
+ * falta (cuentas creadas fuera del formulario) se cae a otros campos de
+ * nombre o a la parte local del correo.
  */
 function deriveUsername(user: User): string {
   const meta = user.user_metadata ?? {};

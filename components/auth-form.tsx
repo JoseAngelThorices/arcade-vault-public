@@ -1,8 +1,8 @@
 "use client";
 
 // Acceso (references/templates/auth.jsx) conectado a Supabase Auth (SPEC 13):
-// correo + contraseña, registro con confirmacion por correo, recuperacion de
-// contraseña y OAuth con Google y GitHub.
+// correo + contraseña, registro con confirmacion por correo y recuperacion de
+// contraseña. Sin proveedores OAuth.
 //
 // Las pestañas NO usan estado de React: son dos radios ocultos con sus labels.
 // El CSS (:checked y :has) decide que formulario se ve, asi que cambiar de
@@ -32,14 +32,14 @@ function authErrorMessage(error: AuthError): string {
   return (error.code && AUTH_ERRORS[error.code]) || "No se pudo completar la operación. Vuelve a intentarlo.";
 }
 
-/** Vuelta de los enlaces de correo y de OAuth, siempre al origen actual (localhost o LAN). */
+/** Vuelta de los enlaces de correo, siempre al origen actual (localhost o LAN). */
 function callbackUrl(next: string) {
   return `${window.location.origin}/acceso/callback?next=${encodeURIComponent(next)}`;
 }
 
 type View = "forms" | "reset" | "notice";
 type Notice = { title: string; text: string };
-type Place = "in" | "up" | "reset" | "social";
+type Place = "in" | "up" | "reset";
 type FormError = { place: Place; text: string } | null;
 
 export default function AuthForm({ linkError = false }: { linkError?: boolean }) {
@@ -161,17 +161,6 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
         title: "ENLACE ENVIADO",
         text: `Si ${resetEmail.trim()} tiene cuenta, te hemos enviado un enlace de recuperación.`,
       });
-    });
-  };
-
-  const oauth = (provider: "google" | "github") => {
-    void run(async () => {
-      const { error } = await createClient().auth.signInWithOAuth({
-        provider,
-        options: { redirectTo: callbackUrl("/juegos") },
-      });
-      // Sin error el navegador ya esta saliendo hacia el proveedor.
-      if (error) setError({ place: "social", text: authErrorMessage(error) });
     });
   };
 
@@ -370,17 +359,6 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
           {busy ? "CREANDO…" : "CREAR Y JUGAR"}
         </button>
       </form>
-
-      <div className="auth-divider">O CONTINÚA CON</div>
-      <div className="social">
-        <button className="btn ghost" type="button" disabled={busy} onClick={() => oauth("google")}>
-          ◆ GOOGLE
-        </button>
-        <button className="btn ghost" type="button" disabled={busy} onClick={() => oauth("github")}>
-          ▣ GITHUB
-        </button>
-      </div>
-      {message("social")}
 
       <div className="auth-terms">AL ENTRAR ACEPTAS LOS TÉRMINOS DEL SALÓN ARCADE</div>
     </div>

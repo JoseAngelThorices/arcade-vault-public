@@ -1427,7 +1427,7 @@
     color: var(--magenta); text-shadow: 0 0 6px rgba(255,0,110,0.7);
   }
   .av-avatar.lg { width: 56px; height: 56px; font-size: 22px; }
-  .auth-submit:disabled, .social .btn:disabled { opacity: 0.6; cursor: wait; }
+  .auth-submit:disabled { opacity: 0.6; cursor: wait; }
   .auth-terms {
     margin-top: 18px;
     text-align: center;
@@ -1531,14 +1531,6 @@
     transition: border-color 140ms, box-shadow 140ms;
   }
   .field input:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0,245,255,0.35); }
-  .auth-divider {
-    display: flex; align-items: center; gap: 12px;
-    margin: 16px 0;
-    font-family: var(--pixel); font-size: 8px; color: var(--ink-faint); letter-spacing: 0.16em;
-  }
-  .auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-  .social { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .social .btn { padding: 12px; font-size: 9px; }
 
   /* ===== salón ===== */
   .av-hall {

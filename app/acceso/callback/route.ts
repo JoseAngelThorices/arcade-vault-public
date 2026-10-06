@@ -1,7 +1,7 @@
-// Callback de Supabase Auth (SPEC 13): un solo punto de entrada para OAuth,
+// Callback de Supabase Auth (SPEC 13): un solo punto de entrada para
 // la confirmación de correo y la recuperación de contraseña.
 //
-//   ?code=…                  flujo PKCE (OAuth y enlaces de correo por defecto)
+//   ?code=…                  flujo PKCE (enlaces de correo por defecto)
 //   ?token_hash=…&type=…     plantillas de correo con token_hash; sirve aunque
 //                            el enlace se abra en otro navegador
 //   ?next=/ruta              destino tras crear la sesión (por defecto /juegos)

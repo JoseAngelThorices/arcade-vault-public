@@ -4,7 +4,7 @@
 > **Depende de:** 04-integracion-de-supabase · 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-10-05
 > **Objetivo:** Conectar la pantalla de acceso existente (`/acceso`) con Supabase Auth
-> (correo + contraseña, OAuth con Google y GitHub), sustituir la sesión falsa `av_user`
+> (correo + contraseña), sustituir la sesión falsa `av_user`
 > de `lib/session.tsx` por el usuario real de Supabase y añadir los flujos de
 > verificación de correo y recuperación de contraseña. Las puntuaciones guardadas por
 > usuarios autenticados pasan a llevar su `user_id`.
@@ -20,12 +20,13 @@
   el nombre del hook, `ready`, `saveScore` y `bestScoreFor` (registro local `av_scores`).
 - `proxy.ts` (nuevo, raíz del repo) — refresca las cookies de sesión de Supabase en cada
   petición. No protege rutas.
-- `app/acceso/callback/route.ts` (nuevo) — Route Handler que convierte el `code` (OAuth y
-  enlaces de correo) o el `token_hash` en una sesión y redirige.
+- `app/acceso/callback/route.ts` (nuevo) — Route Handler que convierte el `code` (enlaces de
+  correo) o el `token_hash` en una sesión y redirige.
 - `app/acceso/nueva-clave/page.tsx` (nuevo) — formulario para fijar la contraseña nueva
   tras pulsar el enlace de recuperación.
 - `components/auth-form.tsx` y `app/acceso/page.tsx` — los formularios de iniciar sesión,
-  crear cuenta y "¿olvidaste tu contraseña?" llaman a Supabase Auth. Se conserva el
+  crear cuenta y "¿olvidaste tu contraseña?" llaman a Supabase Auth. Se quitan los
+  botones GOOGLE y GITHUB del prototipo. Se conserva el
   layout del prototipo; cambian la lógica, el campo de usuario del login (pasa a ser
   correo) y los mensajes inline. Con sesión activa, `/acceso` muestra el estado de la
   cuenta y "CERRAR SESIÓN".
@@ -38,8 +39,6 @@
   (reproductor estático, no escribe en Supabase) solo se adapta al nuevo contexto.
 - `app/globals.css` — estilos de mensajes del formulario, vista de confirmación y avatar
   del nav; se elimina `.auth-guest`.
-- Configuración de Supabase (dashboard, manual): proveedores Email, Google y GitHub y
-  URLs de redirección.
 - `CLAUDE.md` y `lib/supabase/types.ts` — documentar el nuevo modelo de sesión.
 
 **Fuera:**
@@ -51,6 +50,9 @@
 - Protección de rutas: todas siguen accesibles sin sesión. `proxy.ts` solo refresca
   la sesión.
 - Magic link y OTP por SMS.
+- OAuth (Google, GitHub): solo correo + contraseña.
+- Cualquier cambio manual en el dashboard de Supabase: se usa la configuración por
+  defecto del proyecto.
 - Pasar el usuario desde el servidor al primer render (evitar el parpadeo
   "sin sesión → con sesión" al hidratar): se mantiene el comportamiento actual.
 - Migrar el registro local `av_scores` a Supabase: "TU MEJOR MARCA" del salón sigue
@@ -93,8 +95,8 @@ export type Session = {
 - Desaparece `signIn`: el acceso lo gestiona Supabase desde `auth-form.tsx`.
 - La clave `av_user` se elimina del código; la sesión vive en las cookies de
   `@supabase/ssr`. `av_scores` y `av_player_name` se mantienen.
-- `username` se deriva siempre que haya usuario, para que los usuarios de OAuth
-  (sin alias propio) también tengan uno:
+- `username` se deriva siempre que haya usuario, para que una cuenta sin alias
+  propio también tenga uno:
   `user_metadata.username ?? user_metadata.user_name (GitHub) ?? user_metadata.full_name ?? user_metadata.name ?? parte local del email`,
   pasado por `normalizeName`.
 
@@ -115,15 +117,11 @@ supabase.auth.signUp({
 
 ## Plan de implementación
 
-1. **Configurar Supabase (manual, en el dashboard)**
-   - Authentication → Providers → Email: activado, "Confirm email" ON.
-   - Google y GitHub: crear las apps OAuth con callback
-     `https://<project-ref>.supabase.co/auth/v1/callback`, activar ambos proveedores y
-     pegar Client ID y Secret.
-   - Authentication → URL Configuration → Site URL: `http://localhost:3000`.
-     Redirect URLs: `http://localhost:3000/**` y `http://192.168.0.*:3000/**` (el
-     servidor de desarrollo se abre desde la LAN). En producción, añadir el dominio real.
-   - Verificación: los tres proveedores aparecen como "Enabled".
+1. **Configuración de Supabase: ninguna**
+   No se toca el dashboard. Se usa lo que trae el proyecto por defecto: proveedor Email
+   activado y "Confirm email" ON. Sin Redirect URLs en la lista, Supabase envía los
+   enlaces de correo a la Site URL por defecto en lugar de a `/acceso/callback` (ver
+   Riesgos).
 
 2. **`proxy.ts` de refresco de sesión**
    Leer antes `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`.
@@ -150,7 +148,7 @@ supabase.auth.signUp({
 
 4. **`app/acceso/callback/route.ts`**
    `GET` que lee `code`, `token_hash`, `type` y `next` de los search params:
-   - con `code` → `exchangeCodeForSession(code)` (OAuth y enlaces de correo PKCE);
+   - con `code` → `exchangeCodeForSession(code)` (enlaces de correo PKCE);
    - con `token_hash` + `type` → `verifyOtp({ token_hash, type })`;
    - `next` solo se acepta si es una ruta relativa (empieza por `/` y no por `//`);
      por defecto `/juegos`;
@@ -176,7 +174,6 @@ supabase.auth.signUp({
      `resetPasswordForEmail(email, { redirectTo: `${location.origin}/acceso/callback?next=/acceso/nueva-clave` })`.
      Éxito → "Te hemos enviado un enlace de recuperación" (también si el correo no
      existe: no se revela qué cuentas hay).
-   - **GOOGLE / GITHUB**: `signInWithOAuth({ provider, options: { redirectTo: `${location.origin}/acceso/callback?next=/juegos` } })`.
    - Errores de Supabase traducidos al español por `code`
      (`invalid_credentials`, `email_not_confirmed`, `user_already_exists`,
      `weak_password`, `over_email_send_rate_limit`) con un mensaje genérico por defecto.
@@ -232,7 +229,6 @@ supabase.auth.signUp({
 
 ## Criterios de aceptación
 
-- [ ] Los proveedores Email, Google y GitHub están habilitados en Supabase y las Redirect URLs incluyen localhost y la LAN.
 - [ ] `proxy.ts` refresca la sesión y nunca redirige.
 - [ ] `GET /acceso/callback` convierte `code` o `token_hash` en sesión y redirige a `next` (por defecto `/juegos`); un `next` absoluto se ignora.
 - [ ] `useSession()` expone `user: User | null`, `session`, `username`, `ready`, `signOut`, `saveScore` y `bestScoreFor`.
@@ -243,11 +239,11 @@ supabase.auth.signUp({
 - [ ] El enlace de confirmación activa la sesión.
 - [ ] "¿Olvidaste tu contraseña?" envía el correo y muestra la confirmación.
 - [ ] `/acceso/nueva-clave` permite cambiar la contraseña y la nueva funciona.
-- [ ] Los botones GOOGLE y GITHUB inician la redirección al proveedor.
+- [ ] El acceso no muestra botones de Google ni GitHub.
 - [ ] El botón "JUGAR COMO INVITADO" ya no existe.
 - [ ] Con sesión, `/acceso` muestra la cuenta y "CERRAR SESIÓN".
 - [ ] El nav muestra avatar + alias + "CERRAR SESIÓN" con sesión, y "Iniciar Sesión" sin ella.
-- [ ] Un usuario de OAuth sin alias propio tiene `username` derivado y no vacío.
+- [ ] Una cuenta sin alias propio tiene `username` derivado y no vacío.
 - [ ] En los cinco reproductores, el modal pre-rellena el alias del usuario autenticado.
 - [ ] Los scores de usuarios autenticados tienen `user_id`; los de invitados, `null`.
 - [ ] `npm run lint`, `npx tsc --noEmit` y `npm run build` terminan sin errores.
@@ -271,14 +267,14 @@ supabase.auth.signUp({
 - **Sí: verificación de correo activada (double opt-in)** — el registro no abre sesión
   hasta confirmar. Razón: evita cuentas con correos inválidos en el salón de la fama.
 
-- **Sí: alias en `user_metadata`, derivado para OAuth** — sin tabla `profiles`. Razón:
+- **Sí: alias en `user_metadata`, derivado si falta** — sin tabla `profiles`. Razón:
   aquí el alias solo se muestra; una tabla de perfiles con RLS merece su propio spec.
 
 - **Sí: recuperación de contraseña en este spec**. Razón: sin ella la autenticación
   real no se puede usar en producción.
 
-- **Sí: un único callback para OAuth, confirmación y recuperación**, con `next`
-  validado. Razón: con `@supabase/ssr` (flujo PKCE) los tres llegan como `?code=`; el
+- **Sí: un único callback para confirmación y recuperación**, con `next`
+  validado. Razón: con `@supabase/ssr` (flujo PKCE) los dos llegan como `?code=`; el
   soporte de `token_hash` cubre el caso de abrir el enlace en otro navegador si se
   cambian las plantillas de correo.
 
@@ -302,6 +298,15 @@ supabase.auth.signUp({
   queda huérfana e inofensiva, y limpiarla obligaría a mantener la referencia en el
   código.
 
+- **No: OAuth con Google ni GitHub** (cambio del 2026-10-06, tras la implementación
+  inicial). Razón: el usuario solo quiere entrar con su cuenta de correo (Gmail) y no
+  quiere configurar nada a mano en Supabase, y OAuth exige crear apps y credenciales en
+  el dashboard. Se quitan los botones, `signInWithOAuth` y los estilos
+  `.auth-divider`/`.social`.
+
+- **No: configuración manual de Supabase** (mismo cambio). Razón: decisión del usuario.
+  Se acepta que los enlaces de correo caigan en la Site URL por defecto (ver Riesgos).
+
 - **No: edición de perfil en este spec**. Razón: amplía el alcance más allá de la
   autenticación básica.
 
@@ -314,8 +319,13 @@ supabase.auth.signUp({
   aceptado hasta el spec de seguridad, que debe exigir
   `user_id is null or user_id = auth.uid()`.
 
-- **Credenciales OAuth sin configurar** — los botones de Google y GitHub devuelven error
-  de Supabase. Mitigación: el paso 1 va antes de cualquier prueba de OAuth.
+- **Enlaces de correo sin Redirect URLs** — sin la lista configurada, Supabase ignora
+  `emailRedirectTo`/`redirectTo` y manda al usuario a la Site URL (por defecto
+  `http://localhost:3000`). Confirmación: Supabase confirma el correo antes de
+  redirigir, así que después se entra con correo y contraseña de forma normal.
+  Recuperación: el `code` no llega a `/acceso/callback` y `/acceso/nueva-clave` no
+  recibe sesión, así que la recuperación no funciona. Mitigación: añadir
+  `http://localhost:3000/**` a Redirect URLs si algún día se quiere.
 
 - **Límite del SMTP integrado de Supabase** — solo envía unos pocos correos por hora y
   solo a direcciones del equipo del proyecto. Mitigación: suficiente para desarrollo;
@@ -326,5 +336,5 @@ supabase.auth.signUp({
   redirige a `/acceso?error=enlace`. Mitigación: cambiar las plantillas de correo a
   `token_hash`, que el callback ya acepta.
 
-- **Redirect URLs de producción** — si el dominio real no está en la lista, OAuth y los
+- **Redirect URLs de producción** — si el dominio real no está en la lista, los
   enlaces de correo fallan. Mitigación: añadirlo al desplegar.

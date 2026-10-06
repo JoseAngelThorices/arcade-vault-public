@@ -39,7 +39,7 @@ Cada funcionalidad pasa por un spec en `specs/NN-<slug>.md` (en español, con ca
 | 06 | Tablas `games` y `scores` en Supabase; clasificaciones reales |
 | 07–09 | Juegos canvas Tetris, Arkanoid y Snake |
 | 10 | Controles táctiles en móvil: gamepad virtual (`components/mobile-gamepad.tsx`) en los reproductores de los cuatro juegos |
-| 13 | Supabase Auth: correo + contraseña, Google y GitHub, confirmación de correo y recuperación de contraseña; `user_id` en `scores` |
+| 13 | Supabase Auth: correo + contraseña (sin OAuth), confirmación de correo y recuperación de contraseña; `user_id` en `scores` |
 
 Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `.agents/skills/`, registrados en `skills-lock.json`):
 
@@ -73,8 +73,8 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 | `/jugar/[id]` | Reproductor estático genérico (`components/player.tsx`) para juegos sin implementación real |
 | `/jugar/<id>` (estática) | Una ruta estática por juego implementado (listados en `references/implemented-games.md`); tiene prioridad sobre `[id]` y monta el juego canvas real |
 | `/salon` | Salón de la fama: la primera pestaña se renderiza en el servidor, las demás se piden desde el navegador |
-| `/acceso` | Acceso con Supabase Auth (`components/auth-form.tsx`): login, registro, recuperar contraseña, OAuth; con sesión muestra la cuenta. Lee `?error=enlace` |
-| `GET /acceso/callback` | Route Handler: convierte `code` (PKCE/OAuth) o `token_hash` en sesión y redirige a `next` (solo rutas relativas; por defecto `/juegos`) |
+| `/acceso` | Acceso con Supabase Auth (`components/auth-form.tsx`): login, registro y recuperar contraseña (sin OAuth); con sesión muestra la cuenta. Lee `?error=enlace` |
+| `GET /acceso/callback` | Route Handler: convierte `code` (PKCE) o `token_hash` en sesión y redirige a `next` (solo rutas relativas; por defecto `/juegos`) |
 | `/acceso/nueva-clave` | Formulario de contraseña nueva tras el enlace de recuperación (`components/new-password-form.tsx`) |
 | `/acerca-de` | Página "acerca de" con formulario de contacto |
 | `POST /api/contact` | Endpoint de Resend: campo honeypot, límite de peticiones por IP y después validación (`lib/contact.ts`) |
@@ -85,7 +85,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 
 - **Supabase** (`lib/supabase/`): `server.ts` (`createClient()` asíncrono sobre `cookies()`) para Server Components y Route Handlers; `client.ts` para código `"use client"`. Las lecturas están en `games.ts` (`getGames`, `getGame` envuelto en `cache` de React, `getGamesWithBest`) y `scores.ts` (`getTopScores`, `countScores`). Los tipos de fila de `types.ts` (`GameRow`, `ScoreRow`) están **escritos a mano**: actualízalos cuando cambie el esquema.
 - Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: id de `auth.users` si se guardó con sesión, `null` para invitados; sin FK). RLS activo con políticas abiertas: `SELECT` público en ambas, `INSERT` público en `scores`, sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
-- **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name` de OAuth, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición (no protege rutas).
+- **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name`, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición (no protege rutas).
 - **localStorage** (solo cliente): `lib/session.tsx` guarda además un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leído con `useSyncExternalStore` para evitar desajustes de hidratación. `lib/player-name.ts` recuerda el nombre con el que se firman las puntuaciones (`av_player_name`), independiente de la sesión.
 - `lib/games.ts` solo guarda constantes de la interfaz (`CATS`); `lib/format.ts` formatea fechas como `DD/MM/AAAA` con la zona fija `Europe/Madrid` para que servidor y navegador coincidan.
 - Variables de entorno: plantilla en `specs/.env.template` (copiar a `.env.local`). `RESEND_API_KEY` (vacía → modo simulación), `CONTACT_TO` y `RESEND_FROM` son solo de servidor; `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` son públicas.
