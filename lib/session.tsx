@@ -1,20 +1,31 @@
 "use client";
 
-// Sesion y registro de puntuaciones en cliente. Sin backend: todo vive en
-// localStorage, con las mismas claves que el prototipo.
+// Sesion de Supabase Auth (SPEC 13) y registro local de puntuaciones.
 //
-// localStorage es un almacen externo a React, asi que se lee con
+// La sesion vive en las cookies que gestiona @supabase/ssr; aqui solo se
+// escucha onAuthStateChange, cuyo primer evento (INITIAL_SESSION) hidrata el
+// estado. Hasta entonces `ready` es false y se muestra el estado sin sesion,
+// que es tambien lo que renderiza el servidor.
+//
+// El registro de puntuaciones (`av_scores`) sigue en localStorage y se lee con
 // useSyncExternalStore: en el servidor y durante la hidratacion devuelve el
 // snapshot vacio, y React vuelve a renderizar con el valor real ya en cliente.
-// Asi no hay desajuste de hidratacion ni setState dentro de un efecto.
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import type { Session as AuthSession, User } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ReactNode } from "react";
+import { createClient } from "@/lib/supabase/client";
 
-const USER_KEY = "av_user";
 const SCORES_KEY = "av_scores";
-
-export type SessionUser = { name: string };
 
 export type ScoreEntry = {
   game: string;
@@ -24,11 +35,13 @@ export type ScoreEntry = {
 };
 
 export type Session = {
-  user: SessionUser | null;
-  /** false en servidor y durante la hidratacion; true una vez leido localStorage. */
+  user: User | null;
+  session: AuthSession | null;
+  /** Alias normalizado (mayusculas, 10 caracteres); null sin sesion. */
+  username: string | null;
+  /** false en servidor y hasta recibir INITIAL_SESSION de Supabase. */
   ready: boolean;
-  signIn: (user: SessionUser | null) => void;
-  signOut: () => void;
+  signOut: () => Promise<void>;
   saveScore: (entry: Omit<ScoreEntry, "at">) => void;
   bestScoreFor: (gameId: string) => ScoreEntry | null;
 };
@@ -38,7 +51,20 @@ export function normalizeName(name: string): string {
   return name.toUpperCase().slice(0, 10);
 }
 
-// ===== almacen externo sobre localStorage =====
+/**
+ * Alias del usuario. Los registros por correo lo guardan en
+ * `user_metadata.username`; los de OAuth no, asi que se cae al login de
+ * GitHub, al nombre de Google o a la parte local del correo.
+ */
+function deriveUsername(user: User): string {
+  const meta = user.user_metadata ?? {};
+  const raw = [meta.username, meta.user_name, meta.full_name, meta.name, user.email?.split("@")[0]].find(
+    (value): value is string => typeof value === "string" && value.trim() !== "",
+  );
+  return normalizeName((raw ?? "PLAYER").trim());
+}
+
+// ===== almacen externo sobre localStorage (av_scores) =====
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -66,10 +92,9 @@ function readRaw(key: string): string | null {
   }
 }
 
-function writeRaw(key: string, value: string | null) {
+function writeRaw(key: string, value: string) {
   try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
+    localStorage.setItem(key, value);
   } catch {
     // Sin persistencia; el emit posterior mantiene la interfaz coherente.
   }
@@ -79,23 +104,6 @@ function writeRaw(key: string, value: string | null) {
 // useSyncExternalStore exige que el snapshot sea estable entre renders, asi que
 // solo se vuelve a parsear cuando cambia la cadena guardada.
 const NO_SCORES: ScoreEntry[] = [];
-
-let userRaw: string | null = null;
-let userValue: SessionUser | null = null;
-
-function getUserSnapshot(): SessionUser | null {
-  const raw = readRaw(USER_KEY);
-  if (raw !== userRaw) {
-    userRaw = raw;
-    try {
-      const parsed = raw ? (JSON.parse(raw) as SessionUser | null) : null;
-      userValue = parsed?.name ? { name: parsed.name } : null;
-    } catch {
-      userValue = null;
-    }
-  }
-  return userValue;
-}
 
 let scoresRaw: string | null = null;
 let scoresValue: ScoreEntry[] = NO_SCORES;
@@ -114,25 +122,35 @@ function getScoresSnapshot(): ScoreEntry[] {
   return scoresValue;
 }
 
-const getNullUser = () => null;
 const getNoScores = () => NO_SCORES;
-const getTrue = () => true;
-const getFalse = () => false;
 
 // ===== contexto =====
 
 const SessionContext = createContext<Session | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }) {
-  const user = useSyncExternalStore(subscribe, getUserSnapshot, getNullUser);
-  const scores = useSyncExternalStore(subscribe, getScoresSnapshot, getNoScores);
-  const ready = useSyncExternalStore(subscribe, getTrue, getFalse);
+type AuthState = { session: AuthSession | null; ready: boolean };
 
-  const signIn = useCallback((next: SessionUser | null) => {
-    writeRaw(USER_KEY, next ? JSON.stringify(next) : null);
+export function SessionProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const [auth, setAuth] = useState<AuthState>({ session: null, ready: false });
+  const scores = useSyncExternalStore(subscribe, getScoresSnapshot, getNoScores);
+
+  // El cliente se crea dentro del efecto: solo existe en el navegador. Cubre
+  // login, logout, refresco de token y cambios del usuario (USER_UPDATED).
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = createClient().auth.onAuthStateChange((_event, session) => {
+      setAuth({ session, ready: true });
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
-  const signOut = useCallback(() => signIn(null), [signIn]);
+  const signOut = useCallback(async () => {
+    await createClient().auth.signOut();
+    // Los Server Components ya renderizados vuelven a pedirse sin sesion.
+    router.refresh();
+  }, [router]);
 
   const saveScore = useCallback((entry: Omit<ScoreEntry, "at">) => {
     const full: ScoreEntry = { ...entry, at: Date.now() };
@@ -147,10 +165,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [scores],
   );
 
-  const value = useMemo<Session>(
-    () => ({ user, ready, signIn, signOut, saveScore, bestScoreFor }),
-    [user, ready, signIn, signOut, saveScore, bestScoreFor],
-  );
+  const value = useMemo<Session>(() => {
+    const user = auth.session?.user ?? null;
+    return {
+      user,
+      session: auth.session,
+      username: user ? deriveUsername(user) : null,
+      ready: auth.ready,
+      signOut,
+      saveScore,
+      bestScoreFor,
+    };
+  }, [auth, signOut, saveScore, bestScoreFor]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

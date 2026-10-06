@@ -40,15 +40,15 @@ const KEY_MAP: KeyMap = {
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export default function TetrisPlayer({ game }: { game: GameRow }) {
-  const { user, ready, saveScore } = useSession();
+  const { user, username, ready, saveScore } = useSession();
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
   const [level, setLevel] = useState(1);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  // null mientras no haya nombre recordado ni editado, para que siga el nombre
-  // de la sesion cuando esta se termina de leer.
+  // null mientras no haya nombre pre-rellenado ni editado, para que siga el
+  // alias de la sesion cuando esta se termina de leer.
   const [name, setName] = useState<string | null>(null);
   // Cambiarla remonta el canvas: partida nueva desde cero.
   const [run, setRun] = useState(0);
@@ -56,14 +56,15 @@ export default function TetrisPlayer({ game }: { game: GameRow }) {
   // guardado, el juego arranca con su aspecto original.
   const [skin, setSkin] = useSkin();
 
-  const playerName = ready && user ? user.name : "INVITADO";
+  const playerName = ready && username ? username : "INVITADO";
   const scoreName = name ?? playerName;
   const locked = saveStatus === "saving" || saveStatus === "saved";
 
-  /** Abre el modal con el nombre de la ultima puntuacion guardada, si lo hay. */
+  /** Abre el modal con el alias de la cuenta o el ultimo nombre guardado. */
   const openGameOver = () => {
-    const remembered = readPlayerName();
-    if (remembered) setName(normalizeName(remembered));
+    // Con sesion manda el alias de la cuenta; sin ella, el ultimo nombre guardado.
+    const prefill = ready && username ? username : readPlayerName();
+    if (prefill) setName(normalizeName(prefill));
     setOver(true);
   };
 
@@ -74,7 +75,7 @@ export default function TetrisPlayer({ game }: { game: GameRow }) {
 
     const { error } = await createClient()
       .from("scores")
-      .insert({ game_id: game.id, player_name: playerNameToSave, score, user_id: null });
+      .insert({ game_id: game.id, player_name: playerNameToSave, score, user_id: user?.id ?? null });
 
     if (error) {
       setSaveStatus("error");

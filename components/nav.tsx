@@ -15,7 +15,7 @@ function isLibrary(pathname: string) {
 
 export default function Nav() {
   const pathname = usePathname() || "";
-  const { user, ready, signOut } = useSession();
+  const { user, username, ready, signOut } = useSession();
   const [open, setOpen] = useState(false);
 
   const homeActive = pathname === "/inicio";
@@ -34,9 +34,9 @@ export default function Nav() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open]);
 
-  // Hasta que localStorage esta leido se muestra el estado sin sesion, que es
-  // tambien lo que renderiza el servidor.
-  const signedIn = ready && user;
+  // Hasta que Supabase entrega la sesion inicial se muestra el estado sin
+  // sesion, que es tambien lo que renderiza el servidor.
+  const signedIn = ready && user !== null;
 
   return (
     <>
@@ -71,9 +71,17 @@ export default function Nav() {
         </div>
 
         {signedIn ? (
-          <button className="btn ghost auth-btn" onClick={signOut}>
-            {user.name} ▾
-          </button>
+          <div className="nav-user">
+            <Link className="nav-user-id" href="/acceso" aria-label={`Tu cuenta: ${username}`}>
+              <span className="av-avatar" aria-hidden="true">
+                {username?.charAt(0)}
+              </span>
+              <span className="nav-user-name">{username}</span>
+            </Link>
+            <button className="btn ghost nav-signout" onClick={() => void signOut()}>
+              CERRAR SESIÓN
+            </button>
+          </div>
         ) : (
           <Link className="btn auth-btn" href="/acceso">
             Iniciar Sesión
@@ -112,6 +120,17 @@ export default function Nav() {
         <Link className={accessActive ? "active" : ""} href="/acceso" onClick={close}>
           {signedIn ? "Cuenta" : "Iniciar Sesión"}
         </Link>
+        {signedIn && (
+          <button
+            className="panel-action"
+            onClick={() => {
+              close();
+              void signOut();
+            }}
+          >
+            Cerrar sesión
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         <div className="pixel" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
           CRÉDITOS · 03

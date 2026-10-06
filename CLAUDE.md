@@ -39,6 +39,7 @@ Cada funcionalidad pasa por un spec en `specs/NN-<slug>.md` (en español, con ca
 | 06 | Tablas `games` y `scores` en Supabase; clasificaciones reales |
 | 07–09 | Juegos canvas Tetris, Arkanoid y Snake |
 | 10 | Controles táctiles en móvil: gamepad virtual (`components/mobile-gamepad.tsx`) en los reproductores de los cuatro juegos |
+| 13 | Supabase Auth: correo + contraseña, Google y GitHub, confirmación de correo y recuperación de contraseña; `user_id` en `scores` |
 
 Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `.agents/skills/`, registrados en `skills-lock.json`):
 
@@ -72,7 +73,9 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 | `/jugar/[id]` | Reproductor estático genérico (`components/player.tsx`) para juegos sin implementación real |
 | `/jugar/<id>` (estática) | Una ruta estática por juego implementado (listados en `references/implemented-games.md`); tiene prioridad sobre `[id]` y monta el juego canvas real |
 | `/salon` | Salón de la fama: la primera pestaña se renderiza en el servidor, las demás se piden desde el navegador |
-| `/acceso` | Pantalla de acceso — login falso, guarda un nick en localStorage |
+| `/acceso` | Acceso con Supabase Auth (`components/auth-form.tsx`): login, registro, recuperar contraseña, OAuth; con sesión muestra la cuenta. Lee `?error=enlace` |
+| `GET /acceso/callback` | Route Handler: convierte `code` (PKCE/OAuth) o `token_hash` en sesión y redirige a `next` (solo rutas relativas; por defecto `/juegos`) |
+| `/acceso/nueva-clave` | Formulario de contraseña nueva tras el enlace de recuperación (`components/new-password-form.tsx`) |
 | `/acerca-de` | Página "acerca de" con formulario de contacto |
 | `POST /api/contact` | Endpoint de Resend: campo honeypot, límite de peticiones por IP y después validación (`lib/contact.ts`) |
 
@@ -81,8 +84,9 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 ### Datos
 
 - **Supabase** (`lib/supabase/`): `server.ts` (`createClient()` asíncrono sobre `cookies()`) para Server Components y Route Handlers; `client.ts` para código `"use client"`. Las lecturas están en `games.ts` (`getGames`, `getGame` envuelto en `cache` de React, `getGamesWithBest`) y `scores.ts` (`getTopScores`, `countScores`). Los tipos de fila de `types.ts` (`GameRow`, `ScoreRow`) están **escritos a mano**: actualízalos cuando cambie el esquema.
-- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id` siempre `null` hasta un spec de Auth). RLS activo con políticas abiertas: `SELECT` público en ambas, `INSERT` público en `scores`, sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
-- **localStorage** (solo cliente): `lib/session.tsx` guarda la sesión falsa `av_user` y un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leídos con `useSyncExternalStore` para evitar desajustes de hidratación. `lib/player-name.ts` recuerda el nombre con el que se firman las puntuaciones (`av_player_name`), independiente de la sesión.
+- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: id de `auth.users` si se guardó con sesión, `null` para invitados; sin FK). RLS activo con políticas abiertas: `SELECT` público en ambas, `INSERT` público en `scores`, sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
+- **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name` de OAuth, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición (no protege rutas).
+- **localStorage** (solo cliente): `lib/session.tsx` guarda además un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leído con `useSyncExternalStore` para evitar desajustes de hidratación. `lib/player-name.ts` recuerda el nombre con el que se firman las puntuaciones (`av_player_name`), independiente de la sesión.
 - `lib/games.ts` solo guarda constantes de la interfaz (`CATS`); `lib/format.ts` formatea fechas como `DD/MM/AAAA` con la zona fija `Europe/Madrid` para que servidor y navegador coincidan.
 - Variables de entorno: plantilla en `specs/.env.template` (copiar a `.env.local`). `RESEND_API_KEY` (vacía → modo simulación), `CONTACT_TO` y `RESEND_FROM` son solo de servidor; `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` son públicas.
 
@@ -91,7 +95,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 Cada juego se divide en dos ficheros:
 
 - `components/games/<id>-game.tsx` — motor canvas `"use client"` dentro de un `useEffect` (listeners limpiados al desmontar). Recibe `paused: boolean` e informa del estado mediante callbacks (`onScoreChange`, `onLivesChange`/`onLengthChange`/…, `onLevelChange`, `onPauseToggle`, `onGameOver(finalScore)`) en lugar de pintar un HUD o un overlay de GAME OVER en el canvas.
-- `components/<id>-player.tsx` — envoltorio `"use client"` que carga el motor con `next/dynamic({ ssr: false })` y renderiza el HUD en React, el marco CRT, la pausa y el modal de fin de partida. Guardar inserta una fila en `scores` desde el cliente del navegador, escribe `av_player_name` y llama a `saveScore` para el registro local. Reiniciar remonta el canvas incrementando una key `run`.
+- `components/<id>-player.tsx` — envoltorio `"use client"` que carga el motor con `next/dynamic({ ssr: false })` y renderiza el HUD en React, el marco CRT, la pausa y el modal de fin de partida. Guardar inserta una fila en `scores` desde el cliente del navegador (con `user_id` si hay sesión; con sesión el nombre se pre-rellena con el alias), escribe `av_player_name` y llama a `saveScore` para el registro local. Reiniciar remonta el canvas incrementando una key `run`.
 - `app/jugar/<id>/page.tsx` — Server Component que llama a `getGame("<id>")` y renderiza el reproductor.
 - Los assets del juego (sprites, sonidos) van en `public/games/<id>/`; la nueva fila de `games` se inserta en Supabase con el SQL del spec.
 - Cuando se implementa un juego, añade su fila a `references/implemented-games.md` (mismos datos que su fila de `games`).
@@ -119,7 +123,7 @@ Esto es **Next.js 16.3.5** con React 19.2 y Tailwind CSS v4. `AGENTS.md` (import
 - **Turbopack es el predeterminado** tanto en `dev` como en `build`; el flag `--turbopack` está obsoleto. Las opciones de Turbopack van en `turbopack` dentro de `next.config.ts`, no en `webpack`. Una configuración `webpack` hace fallar `next build` salvo que se ejecute con `--webpack`.
 - **Las Request APIs son solo asíncronas.** `cookies()`, `headers()`, `draftMode()` y `params`/`searchParams` deben esperarse con `await`; el acceso síncrono se eliminó, no solo se desaconsejó.
 - **Helpers globales de tipos de ruta.** `PageProps<'/route'>`, `LayoutProps<'/route'>` y `RouteContext<'/route'>` están disponibles globalmente y los genera `next typegen`; no se importan.
-- **`middleware.ts` ahora es `proxy.ts`** — la convención antigua está obsoleta. (Todavía no existe ninguno; el refresco de sesión de Supabase lo necesitará cuando llegue Auth.)
+- **`middleware.ts` ahora es `proxy.ts`** — la convención antigua está obsoleta. El `proxy.ts` de la raíz refresca la sesión de Supabase (SPEC 13).
 - **`next lint` ya no existe.** El lint se ejecuta con la CLI de ESLint y `eslint.config.mjs` (flat config, `eslint-config-next/core-web-vitals` + `/typescript`).
 - **`ssr: false` en `next/dynamic` solo funciona dentro de Client Components** — por eso los reproductores de juegos son client components de principio a fin.
 - Se eliminaron la opción de segmento `experimental_ppr` de PPR y los prefijos `unstable_` de las APIs estabilizadas. La caché usa `revalidateTag`/`updateTag`/`refresh` y `cacheLife`/`cacheTag`.

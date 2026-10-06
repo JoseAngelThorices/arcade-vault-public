@@ -14,7 +14,7 @@ const LIVES = 3;
 const LEVEL = 1;
 
 export default function GamePlayer({ game }: { game: GameRow }) {
-  const { user, ready, saveScore } = useSession();
+  const { username, ready, saveScore } = useSession();
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -22,7 +22,7 @@ export default function GamePlayer({ game }: { game: GameRow }) {
   // cuando esta se termina de leer.
   const [typedName, setTypedName] = useState<string | null>(null);
 
-  const playerName = ready && user ? user.name : "INVITADO";
+  const playerName = ready && username ? username : "INVITADO";
   const scoreName = typedName ?? playerName;
 
   const restart = () => {

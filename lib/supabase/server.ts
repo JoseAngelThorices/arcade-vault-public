@@ -23,8 +23,7 @@ export const createClient = async () => {
             );
           } catch {
             // Llamado desde un Server Component: ahí las cookies son de solo
-            // lectura. Se ignora; el refresco de sesión lo hará el proxy
-            // cuando llegue el spec de Auth.
+            // lectura. Se ignora; el refresco de sesión lo hace `proxy.ts`.
           }
         },
       },

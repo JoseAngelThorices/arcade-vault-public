@@ -1,5 +1,5 @@
 // Nombre con el que el jugador firma sus puntuaciones (SPEC 06). Es distinto
-// del nick de sesion (`av_user`): se recuerda aunque no haya sesion abierta.
+// del alias de la cuenta: se recuerda aunque no haya sesion abierta.
 
 const PLAYER_NAME_KEY = "av_player_name";
 
