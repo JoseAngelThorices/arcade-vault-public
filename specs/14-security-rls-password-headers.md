@@ -54,10 +54,11 @@ Datos en `scores`: 12 filas, 11 de invitados (`user_id is null`), ninguna con
   juegos corren en el navegador, así que un usuario autenticado puede llamar a la API
   con cualquier `score`. Evitarlo exige validar la partida en el servidor (replay,
   firma de sesión de juego…): queda para un spec futuro. Este spec garantiza quién
-  firma cada puntuación, no que sea real.
-- Leaked password protection (plan Pro).
+  firma cada puntuación, no que sea real. Ver "Pendiente".
+- Leaked password protection (plan Pro). Alternativa gratuita en "Pendiente".
 - Content-Security-Policy y HSTS: necesitan inventariar orígenes externos (Supabase,
-  Resend, Google Fonts) y HSTS es difícil de revertir en el dominio. Spec propio.
+  Resend, Google Fonts) y HSTS es difícil de revertir en el dominio. Spec propio;
+  enfoque en "Pendiente".
 - Conservar la puntuación de una partida jugada sin sesión tras iniciar sesión: se
   pierde. El aviso aparece solo al final de la partida, no antes de jugar.
 - Borrar o reasignar las 11 puntuaciones históricas de invitados: siguen visibles.
@@ -308,3 +309,51 @@ const PASSWORD_REGEX =
 - **Trigger y `auth.jwt()`:** si en el futuro se inserta en `scores` desde el
   servidor con la clave de servicio, `auth.jwt()` será `null` y el nombre quedará
   `PLAYER`. Hoy no hay inserciones desde servidor.
+
+---
+
+## Pendiente
+
+Lo que este spec deja abierto, con el enfoque previsto para cada punto. Nada de esto
+está implementado.
+
+### 1. Content-Security-Policy y HSTS
+
+Es lo siguiente que conviene hacer: protege bastante y es concreto. Necesita su propio
+spec porque, si la CSP sale mal, rompe la app sin avisar (scripts bloqueados, React
+sin hidratar).
+
+- **Orígenes a permitir:** Supabase (`connect-src` para REST y Auth; `wss://` solo si
+  algún día se usa Realtime, hoy no) y nada más en el navegador. Resend solo se llama
+  desde el servidor y Google Fonts se autoaloja con `next/font`, así que no necesitan entrada.
+- **Scripts inline de Next:** la CSP necesita un `nonce` por petición generado en
+  `proxy.ts` (ver la guía de CSP en `node_modules/next/dist/docs/`).
+- **Despliegue gradual:** primero `Content-Security-Policy-Report-Only`; se pasa a
+  `Content-Security-Policy` cuando no haya violaciones.
+- **HSTS:** solo tiene efecto en producción con HTTPS. Empezar con un `max-age` corto
+  y sin `preload`, que es difícil de revertir en el dominio.
+
+### 2. Contraseñas filtradas
+
+Leaked password protection de Supabase es del plan Pro. Alternativa gratuita: consultar
+la API de rangos de Have I Been Pwned con k-anonimato (solo se envían los 5 primeros
+caracteres del hash SHA-1, nunca la contraseña).
+
+- Iría en `lib/password.ts`, junto a la política actual, y se aplicaría en el registro
+  y en la contraseña nueva.
+- **Limitación:** se comprueba en la app, no en Supabase Auth, así que quien llame
+  directamente a la API de Auth se la salta. Cubre el uso normal de la web.
+- Es un cambio pequeño: puede hacerse sin spec propio, anotándolo en `Decisiones`.
+
+### 3. Puntuaciones inventadas
+
+Un usuario con cuenta puede enviar a mano la cifra que quiera, porque los juegos corren
+en el navegador. Hay dos niveles de solución:
+
+- **Validación real:** que el servidor vuelva a jugar la partida a partir de las teclas
+  pulsadas y una semilla. Supone tocar los motores de los cinco juegos.
+- **Mitigación barata:** una Edge Function que firme el inicio de cada partida y
+  rechace puntuaciones imposibles para el tiempo jugado, más un límite de envíos por
+  usuario. No elimina el fraude, pero sí que sea trivial.
+
+Queda para cuando la clasificación importe de verdad; necesitaría spec propio.
