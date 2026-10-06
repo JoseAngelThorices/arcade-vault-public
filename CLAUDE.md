@@ -66,7 +66,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 
 | Ruta | Qué es |
 |---|---|
-| `/` | `redirect("/inicio")` |
+| `/` | `redirect("/inicio")`; si llega `?code` (enlace de correo que Supabase manda a la Site URL) lo reenvía a `/acceso/callback`, y `?error` a `/acceso?error=enlace` |
 | `/inicio` | Landing |
 | `/juegos` | Cuadrícula de la biblioteca (`components/game-library.tsx`), juegos + mejor puntuación desde Supabase |
 | `/juego/[id]` | Detalle del juego + top 10 de la clasificación (Server Component, con su propio `not-found.tsx`) |
@@ -74,7 +74,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 | `/jugar/<id>` (estática) | Una ruta estática por juego implementado (listados en `references/implemented-games.md`); tiene prioridad sobre `[id]` y monta el juego canvas real |
 | `/salon` | Salón de la fama: la primera pestaña se renderiza en el servidor, las demás se piden desde el navegador |
 | `/acceso` | Acceso con Supabase Auth (`components/auth-form.tsx`): login, registro y recuperar contraseña (sin OAuth); con sesión muestra la cuenta. Lee `?error=enlace` |
-| `GET /acceso/callback` | Route Handler: convierte `code` (PKCE) o `token_hash` en sesión y redirige a `next` (solo rutas relativas; por defecto `/juegos`) |
+| `GET /acceso/callback` | Route Handler: convierte `code` (PKCE) o `token_hash` en sesión y redirige a `next` (solo rutas relativas). Sin `next`, decide por el claim `amr`: `recovery` → `/acceso/nueva-clave`, si no `/juegos` |
 | `/acceso/nueva-clave` | Formulario de contraseña nueva tras el enlace de recuperación (`components/new-password-form.tsx`) |
 | `/acerca-de` | Página "acerca de" con formulario de contacto |
 | `POST /api/contact` | Endpoint de Resend: campo honeypot, límite de peticiones por IP y después validación (`lib/contact.ts`) |
@@ -84,7 +84,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 ### Datos
 
 - **Supabase** (`lib/supabase/`): `server.ts` (`createClient()` asíncrono sobre `cookies()`) para Server Components y Route Handlers; `client.ts` para código `"use client"`. Las lecturas están en `games.ts` (`getGames`, `getGame` envuelto en `cache` de React, `getGamesWithBest`) y `scores.ts` (`getTopScores`, `countScores`). Los tipos de fila de `types.ts` (`GameRow`, `ScoreRow`) están **escritos a mano**: actualízalos cuando cambie el esquema.
-- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: id de `auth.users` si se guardó con sesión, `null` para invitados; sin FK). RLS activo con políticas abiertas: `SELECT` público en ambas, `INSERT` público en `scores`, sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
+- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: FK a `auth.users` con `on delete set null`, `null` para invitados). RLS activo: `SELECT` público en ambas; `INSERT` en `scores` abierto a `anon` y `authenticated` pero solo con `user_id is null or user_id = auth.uid()` (nadie firma con la cuenta de otro); sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
 - **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name`, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición (no protege rutas).
 - **localStorage** (solo cliente): `lib/session.tsx` guarda además un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leído con `useSyncExternalStore` para evitar desajustes de hidratación. `lib/player-name.ts` recuerda el nombre con el que se firman las puntuaciones (`av_player_name`), independiente de la sesión.
 - `lib/games.ts` solo guarda constantes de la interfaz (`CATS`); `lib/format.ts` formatea fechas como `DD/MM/AAAA` con la zona fija `Europe/Madrid` para que servidor y navegador coincidan.

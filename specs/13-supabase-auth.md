@@ -335,6 +335,34 @@ Sin verificar a mano:
   dev origin`): el servidor de desarrollo se abrió desde otra red, React no hidrataba y
   el formulario no enviaba nada a Supabase.
 
+### Seguimiento tras el cierre (2026-10-06)
+
+- **Recuperación de contraseña sin Redirect URLs.** `app/page.tsx` reenvía `/?code=…`
+  (donde Supabase deja el enlace al caer en la Site URL) a `/acceso/callback`, y
+  `/?error=…` a `/acceso?error=enlace`. Sin `next`, el callback elige destino por el
+  claim `amr` del token: `recovery` → `/acceso/nueva-clave`; si no, `/juegos`. La
+  recuperación probada a mano funciona. Limitación: el correo debe pedirse desde
+  `http://localhost:3000`, porque el verificador PKCE vive en el origen que lo pidió.
+  Efecto colateral: el enlace de confirmación ahora también abre sesión.
+- **`user_id` ya no es falsificable.** Migración `scores_user_id_owner_check_and_fk`:
+
+  ```sql
+  drop policy "scores: inserción pública" on public.scores;
+  create policy "scores: inserción pública" on public.scores
+    for insert to anon, authenticated
+    with check (user_id is null or user_id = (select auth.uid()));
+
+  alter table public.scores
+    add constraint scores_user_id_fkey foreign key (user_id)
+    references auth.users (id) on delete set null;
+
+  create index scores_user_id_idx on public.scores (user_id);
+  ```
+
+  Comprobado: un insert anónimo con un `user_id` ajeno devuelve `42501` (RLS). Sigue
+  abierto que un cliente puede inventarse la puntuación; eso pide validar partidas en
+  el servidor y queda para otro spec.
+
 ---
 
 ## Riesgos identificados
