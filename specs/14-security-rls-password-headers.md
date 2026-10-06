@@ -261,10 +261,10 @@ const PASSWORD_REGEX =
 - [x] El asesor de seguridad no muestra avisos de `rls_auto_enable()`, y el event
       trigger `ensure_rls` sigue existiendo.
 - [x] Rate limit de sign-ups/sign-ins configurado en el Dashboard.
-- [ ] Registro y contraseña nueva rechazan en el cliente lo que Supabase rechazaría
+- [x] Registro y contraseña nueva rechazan en el cliente lo que Supabase rechazaría
       (incluido `Contraseña1`), sin petición de red; `Abc123!@` pasa.
-- [ ] Sin sesión, el fin de partida invita a iniciar sesión y no ofrece guardar.
-- [ ] Con sesión, se guarda con el alias fijo y aparece en la clasificación.
+- [x] Sin sesión, el fin de partida invita a iniciar sesión y no ofrece guardar.
+- [x] Con sesión, se guarda con el alias fijo y aparece en la clasificación.
 - [x] Las respuestas HTTP llevan `X-Content-Type-Options`, `X-Frame-Options`,
       `Referrer-Policy` y `X-DNS-Prefetch-Control`.
 - [x] `/acceso/nueva-clave` sin sesión redirige a `/acceso?error=enlace`.
