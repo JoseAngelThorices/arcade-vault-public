@@ -21,7 +21,7 @@ npx tsc --noEmit # comprobación de tipos (no hay alias en scripts)
 npx next typegen # regenera los tipos de rutas tras añadir/renombrar rutas
 ```
 
-El servidor de desarrollo se abre desde la IP de la LAN (`192.168.0.x` o `192.168.18.x`), así que `next.config.ts` define `allowedDevOrigins: ["192.168.0.*", "192.168.18.*"]`. Sin eso, Next bloquea sus recursos de desarrollo para ese origen y React nunca hidrata: no lo quites.
+El servidor de desarrollo se abre desde la IP de la LAN (`192.168.0.x` o `192.168.18.x`), así que `next.config.ts` define `allowedDevOrigins: ["192.168.0.*", "192.168.18.*"]`. Sin eso, Next bloquea sus recursos de desarrollo para ese origen y React nunca hidrata: no lo quites. El mismo fichero añade en todas las rutas los headers `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy` y `X-DNS-Prefetch-Control` (SPEC 14); CSP y HSTS quedan pendientes.
 
 No hay test runner configurado: no existe script de test, framework ni fichero de test en el repo. Añadir uno es una decisión del proyecto; confirma la elección con el usuario primero.
 
@@ -40,6 +40,7 @@ Cada funcionalidad pasa por un spec en `specs/NN-<slug>.md` (en español, con ca
 | 07–09 | Juegos canvas Tetris, Arkanoid y Snake |
 | 10 | Controles táctiles en móvil: gamepad virtual (`components/mobile-gamepad.tsx`) en los reproductores de los cuatro juegos |
 | 13 | Supabase Auth: correo + contraseña (sin OAuth), confirmación de correo y recuperación de contraseña; `user_id` en `scores` |
+| 14 | Seguridad: solo se guardan puntuaciones con sesión y firmadas con el alias, política de contraseña robusta (`lib/password.ts`), headers HTTP y `proxy.ts` protege `/acceso/nueva-clave` |
 
 Skills del proyecto (en `.claude/skills/`; `spec` y `spec-impl` son symlinks a `.agents/skills/`, registrados en `skills-lock.json`):
 
@@ -84,9 +85,9 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 ### Datos
 
 - **Supabase** (`lib/supabase/`): `server.ts` (`createClient()` asíncrono sobre `cookies()`) para Server Components y Route Handlers; `client.ts` para código `"use client"`. Las lecturas están en `games.ts` (`getGames`, `getGame` envuelto en `cache` de React, `getGamesWithBest`) y `scores.ts` (`getTopScores`, `countScores`). Los tipos de fila de `types.ts` (`GameRow`, `ScoreRow`) están **escritos a mano**: actualízalos cuando cambie el esquema.
-- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: FK a `auth.users` con `on delete set null`, `null` para invitados). RLS activo: `SELECT` público en ambas; `INSERT` en `scores` abierto a `anon` y `authenticated` pero solo con `user_id is null or user_id = auth.uid()` (nadie firma con la cuenta de otro); sin `UPDATE`/`DELETE`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
-- **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name`, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición (no protege rutas).
-- **localStorage** (solo cliente): `lib/session.tsx` guarda además un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leído con `useSyncExternalStore` para evitar desajustes de hidratación. `lib/player-name.ts` recuerda el nombre con el que se firman las puntuaciones (`av_player_name`), independiente de la sesión.
+- Tablas: `games` (`id` slug PK, `title`, `short`, `long`, `cat`, `cover` clase CSS, `color`) y `scores` (`game_id`, `player_name`, `score`, `user_id`: FK a `auth.users` con `on delete set null`, `null` en las filas históricas de invitados). RLS activo: `SELECT` público en ambas; `INSERT` en `scores` solo para `authenticated` con `user_id = auth.uid()` (`anon` no tiene permiso de `INSERT`); sin `UPDATE`/`DELETE`. En `scores`, el trigger `scores_set_player_name` sobrescribe `player_name` con el alias del JWT (misma prioridad que `username` de la sesión) y hay `CHECK` de `score >= 0` y `player_name` de 1–10 caracteres (SPEC 14). La función `rls_auto_enable()` (event trigger `ensure_rls`, activa RLS en tablas nuevas de `public`) se conserva sin `EXECUTE` para `anon`/`authenticated`. Los agregados de PostgREST están desactivados, así que la "mejor puntuación" es una consulta `order score desc limit 1` por juego.
+- **Sesión** (SPEC 13): `lib/session.tsx` (`SessionProvider`/`useSession()`) escucha `onAuthStateChange` de Supabase y expone `user`, `session`, `username` (alias derivado de `user_metadata`: `username`, si no `user_name`/`full_name`/`name`, si no la parte local del correo), `ready` (false hasta `INITIAL_SESSION`) y `signOut`. La sesión vive en cookies de `@supabase/ssr` y `proxy.ts` la refresca en cada petición; la única ruta que protege es `/acceso/nueva-clave` (sin sesión → `/acceso?error=enlace`). La política de contraseña (8 caracteres con minúscula, mayúscula, dígito y símbolo de la lista de Supabase) está en `lib/password.ts` y se valida en el registro y en la contraseña nueva, igual que en Supabase Auth.
+- **localStorage** (solo cliente): `lib/session.tsx` guarda además un registro local de puntuaciones `av_scores` (alimenta "TU MEJOR MARCA" en el salón), leído con `useSyncExternalStore` para evitar desajustes de hidratación.
 - `lib/games.ts` solo guarda constantes de la interfaz (`CATS`); `lib/format.ts` formatea fechas como `DD/MM/AAAA` con la zona fija `Europe/Madrid` para que servidor y navegador coincidan.
 - Variables de entorno: plantilla en `specs/.env.template` (copiar a `.env.local`). `RESEND_API_KEY` (vacía → modo simulación), `CONTACT_TO` y `RESEND_FROM` son solo de servidor; `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` son públicas.
 
@@ -95,7 +96,7 @@ Implementa los specs paso a paso: termina un paso, para y pregunta antes del sig
 Cada juego se divide en dos ficheros:
 
 - `components/games/<id>-game.tsx` — motor canvas `"use client"` dentro de un `useEffect` (listeners limpiados al desmontar). Recibe `paused: boolean` e informa del estado mediante callbacks (`onScoreChange`, `onLivesChange`/`onLengthChange`/…, `onLevelChange`, `onPauseToggle`, `onGameOver(finalScore)`) en lugar de pintar un HUD o un overlay de GAME OVER en el canvas.
-- `components/<id>-player.tsx` — envoltorio `"use client"` que carga el motor con `next/dynamic({ ssr: false })` y renderiza el HUD en React, el marco CRT, la pausa y el modal de fin de partida. Guardar inserta una fila en `scores` desde el cliente del navegador (con `user_id` si hay sesión; con sesión el nombre se pre-rellena con el alias), escribe `av_player_name` y llama a `saveScore` para el registro local. Reiniciar remonta el canvas incrementando una key `run`.
+- `components/<id>-player.tsx` — envoltorio `"use client"` que carga el motor con `next/dynamic({ ssr: false })` y renderiza el HUD en React, el marco CRT, la pausa y el modal de fin de partida. Guardar solo es posible con sesión: inserta una fila en `scores` desde el cliente del navegador con `user_id` y el alias de la cuenta (fijo, no editable) y llama a `saveScore` para el registro local; sin sesión, el modal invita a iniciar sesión. Reiniciar remonta el canvas incrementando una key `run`.
 - `app/jugar/<id>/page.tsx` — Server Component que llama a `getGame("<id>")` y renderiza el reproductor.
 - Los assets del juego (sprites, sonidos) van en `public/games/<id>/`; la nueva fila de `games` se inserta en Supabase con el SQL del spec.
 - Cuando se implementa un juego, añade su fila a `references/implemented-games.md` (mismos datos que su fila de `games`).
@@ -123,7 +124,7 @@ Esto es **Next.js 16.3.5** con React 19.2 y Tailwind CSS v4. `AGENTS.md` (import
 - **Turbopack es el predeterminado** tanto en `dev` como en `build`; el flag `--turbopack` está obsoleto. Las opciones de Turbopack van en `turbopack` dentro de `next.config.ts`, no en `webpack`. Una configuración `webpack` hace fallar `next build` salvo que se ejecute con `--webpack`.
 - **Las Request APIs son solo asíncronas.** `cookies()`, `headers()`, `draftMode()` y `params`/`searchParams` deben esperarse con `await`; el acceso síncrono se eliminó, no solo se desaconsejó.
 - **Helpers globales de tipos de ruta.** `PageProps<'/route'>`, `LayoutProps<'/route'>` y `RouteContext<'/route'>` están disponibles globalmente y los genera `next typegen`; no se importan.
-- **`middleware.ts` ahora es `proxy.ts`** — la convención antigua está obsoleta. El `proxy.ts` de la raíz refresca la sesión de Supabase (SPEC 13).
+- **`middleware.ts` ahora es `proxy.ts`** — la convención antigua está obsoleta. El `proxy.ts` de la raíz refresca la sesión de Supabase (SPEC 13) y protege `/acceso/nueva-clave` (SPEC 14).
 - **`next lint` ya no existe.** El lint se ejecuta con la CLI de ESLint y `eslint.config.mjs` (flat config, `eslint-config-next/core-web-vitals` + `/typescript`).
 - **`ssr: false` en `next/dynamic` solo funciona dentro de Client Components** — por eso los reproductores de juegos son client components de principio a fin.
 - Se eliminaron la opción de segmento `experimental_ppr` de PPR y los prefijos `unstable_` de las APIs estabilizadas. La caché usa `revalidateTag`/`updateTag`/`refresh` y `cacheLife`/`cacheTag`.
