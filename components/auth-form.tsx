@@ -1,34 +1,238 @@
 "use client";
 
-// Acceso (references/templates/auth.jsx). No hay autenticacion real: el
-// formulario acepta cualquier cosa y fabrica un usuario, igual que el prototipo.
+// Acceso (references/templates/auth.jsx) conectado a Supabase Auth (SPEC 13):
+// correo + contraseña, registro con confirmacion por correo y recuperacion de
+// contraseña. Sin proveedores OAuth.
 //
 // Las pestañas NO usan estado de React: son dos radios ocultos con sus labels.
 // El CSS (:checked y :has) decide que formulario se ve, asi que cambiar de
-// pestaña funciona aunque la pagina todavia no haya hidratado.
+// pestaña funciona aunque la pagina todavia no haya hidratado. Los inputs no
+// llevan `name`: un envio antes de hidratar no pone la contraseña en la URL.
 
+import type { AuthError } from "@supabase/supabase-js";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { normalizeName, useSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/client";
 
 const ALIAS_MAX = 10;
+const PASSWORD_MIN = 6;
 
+/** Mensajes en español para los codigos de error de Supabase Auth. */
+const AUTH_ERRORS: Record<string, string> = {
+  invalid_credentials: "Correo o contraseña incorrectos.",
+  email_not_confirmed: "Confirma tu correo antes de entrar: busca el enlace en tu bandeja.",
+  user_already_exists: "Ya hay una cuenta con ese correo. Inicia sesión.",
+  weak_password: `La contraseña es demasiado débil. Usa al menos ${PASSWORD_MIN} caracteres.`,
+  over_email_send_rate_limit: "Se han enviado demasiados correos. Espera unos minutos y vuelve a probar.",
+};
 
+function authErrorMessage(error: AuthError): string {
+  return (error.code && AUTH_ERRORS[error.code]) || "No se pudo completar la operación. Vuelve a intentarlo.";
+}
 
-export default function AuthForm() {
+/** Vuelta de los enlaces de correo, siempre al origen actual (localhost o LAN). */
+function callbackUrl(next: string) {
+  return `${window.location.origin}/acceso/callback?next=${encodeURIComponent(next)}`;
+}
+
+type View = "forms" | "reset" | "notice";
+type Notice = { title: string; text: string };
+type Place = "in" | "up" | "reset";
+type FormError = { place: Place; text: string } | null;
+
+export default function AuthForm({ linkError = false }: { linkError?: boolean }) {
+  const { user, username, ready, signOut } = useSession();
+
+  if (ready && user) {
+    return (
+      <div className="auth-card">
+        <div className="auth-account">
+          <div className="av-avatar lg" aria-hidden="true">
+            {username?.charAt(0)}
+          </div>
+          <p className="auth-account-label">Sesión iniciada como</p>
+          <h2>{username}</h2>
+          {user.email && <p className="auth-account-email">{user.email}</p>}
+        </div>
+        <Link className="btn lg auth-submit" href="/juegos">
+          IR A LA BIBLIOTECA
+        </Link>
+        <button className="btn ghost auth-secondary" type="button" onClick={() => void signOut()}>
+          CERRAR SESIÓN
+        </button>
+      </div>
+    );
+  }
+
+  return <SignedOutCard linkError={linkError} />;
+}
+
+function SignedOutCard({ linkError }: { linkError: boolean }) {
   const router = useRouter();
-  const { signIn } = useSession();
-  const [name, setName] = useState("");
+  const [view, setView] = useState<View>("forms");
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [error, setError] = useState<FormError>(
+    linkError ? { place: "in", text: "El enlace no es válido o ha caducado. Pide uno nuevo." } : null,
+  );
+  const [busy, setBusy] = useState(false);
+
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [alias, setAlias] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
   const [terms, setTerms] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    signIn({ name: normalizeName(name || "PLAYER1") });
+  const enterVault = () => {
     router.push("/juegos");
+    router.refresh();
   };
+
+  const showNotice = (next: Notice) => {
+    setNotice(next);
+    setView("notice");
+  };
+
+  /** Envuelve cada llamada a Supabase: un solo envio a la vez y el error limpio. */
+  const run = async (task: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await task();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const signIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      const { error } = await createClient().auth.signInWithPassword({
+        email: loginEmail.trim(),
+        password: loginPassword,
+      });
+      if (error) setError({ place: "in", text: authErrorMessage(error) });
+      else enterVault();
+    });
+  };
+
+  const signUp = (e: React.FormEvent) => {
+    e.preventDefault();
+    const fail = (text: string) => setError({ place: "up", text });
+    if (!alias.trim()) return fail("Elige un alias de jugador.");
+    if (!email.trim()) return fail("Escribe tu correo electrónico.");
+    if (password.length < PASSWORD_MIN) return fail(`La contraseña necesita al menos ${PASSWORD_MIN} caracteres.`);
+    if (password !== repeat) return fail("Las contraseñas no coinciden.");
+    if (!terms) return fail("Acepta las normas del salón para crear la cuenta.");
+
+    void run(async () => {
+      const { data, error } = await createClient().auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: { username: normalizeName(alias.trim()) },
+          emailRedirectTo: callbackUrl("/juegos"),
+        },
+      });
+      if (error) return fail(authErrorMessage(error));
+      // Con la confirmacion por correo desactivada, Supabase ya devuelve sesion.
+      if (data.session) return enterVault();
+      showNotice({
+        title: "REVISA TU CORREO",
+        text: `Hemos enviado un enlace a ${email.trim()}. Ábrelo para confirmar tu cuenta y entrar al Vault.`,
+      });
+    });
+  };
+
+  const sendReset = (e: React.FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      const { error } = await createClient().auth.resetPasswordForEmail(resetEmail.trim(), {
+        redirectTo: callbackUrl("/acceso/nueva-clave"),
+      });
+      if (error) return setError({ place: "reset", text: authErrorMessage(error) });
+      // Mismo mensaje exista o no la cuenta: no se revela que correos estan dados de alta.
+      showNotice({
+        title: "ENLACE ENVIADO",
+        text: `Si ${resetEmail.trim()} tiene cuenta, te hemos enviado un enlace de recuperación.`,
+      });
+    });
+  };
+
+  const openReset = () => {
+    setResetEmail(loginEmail);
+    setError(null);
+    setView("reset");
+  };
+
+  const backToForms = () => {
+    setError(null);
+    setView("forms");
+  };
+
+  const message = (place: Place) =>
+    error?.place === place ? (
+      <p className="auth-msg" role="alert">
+        {error.text}
+      </p>
+    ) : null;
+
+  if (view === "notice" && notice) {
+    return (
+      <div className="auth-card">
+        <div className="auth-notice" role="status">
+          <h2>{notice.title}</h2>
+          <p>{notice.text}</p>
+        </div>
+        <button className="btn ghost auth-secondary" type="button" onClick={backToForms}>
+          VOLVER AL ACCESO
+        </button>
+      </div>
+    );
+  }
+
+  if (view === "reset") {
+    return (
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="mark" aria-hidden="true" />
+          <h2>ARCADE VAULT</h2>
+          <div className="sub">RECUPERAR CONTRASEÑA</div>
+        </div>
+
+        <form className="auth-panel" onSubmit={sendReset}>
+          <p className="field-hint auth-intro">
+            Escribe el correo de tu cuenta y te enviaremos un enlace para elegir una contraseña nueva.
+          </p>
+          <div className="field">
+            <label htmlFor="av-reset-email">Correo electrónico</label>
+            <input
+              id="av-reset-email"
+              type="email"
+              required
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              placeholder="jugador@vault.gg"
+              autoComplete="email"
+            />
+          </div>
+          {message("reset")}
+          <button className="btn lg auth-submit" type="submit" disabled={busy}>
+            {busy ? "ENVIANDO…" : "ENVIAR ENLACE"}
+          </button>
+        </form>
+
+        <button className="btn ghost auth-secondary" type="button" onClick={backToForms}>
+          VOLVER AL ACCESO
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="auth-card">
@@ -50,15 +254,17 @@ export default function AuthForm() {
         <label htmlFor="av-tab-up">CREAR CUENTA</label>
       </div>
 
-      <form className="auth-panel only-in" onSubmit={submit}>
+      <form className="auth-panel only-in" onSubmit={signIn}>
         <div className="field">
-          <label htmlFor="av-user">Usuario</label>
+          <label htmlFor="av-user">Correo electrónico</label>
           <input
             id="av-user"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="px_kai"
-            autoComplete="username"
+            type="email"
+            required
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            placeholder="jugador@vault.gg"
+            autoComplete="email"
           />
         </div>
 
@@ -67,31 +273,38 @@ export default function AuthForm() {
           <input
             id="av-pass"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            required
+            value={loginPassword}
+            onChange={(e) => setLoginPassword(e.target.value)}
             placeholder="••••••••"
             autoComplete="current-password"
           />
         </div>
 
-        <button className="btn lg auth-submit" type="submit">
-          ENTRAR AL VAULT
+        {message("in")}
+
+        <button className="btn lg auth-submit" type="submit" disabled={busy}>
+          {busy ? "ENTRANDO…" : "ENTRAR AL VAULT"}
+        </button>
+
+        <button className="auth-link" type="button" onClick={openReset}>
+          ¿Olvidaste tu contraseña?
         </button>
       </form>
 
-      <form className="auth-panel only-up" onSubmit={submit}>
+      <form className="auth-panel only-up" onSubmit={signUp} noValidate>
         <div className="field">
           <div className="field-head">
             <label htmlFor="av-alias">Alias de jugador</label>
             <span className="field-count">
-              {name.length}/{ALIAS_MAX}
+              {alias.length}/{ALIAS_MAX}
             </span>
           </div>
           <input
             id="av-alias"
-            value={name}
+            value={alias}
             maxLength={ALIAS_MAX}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setAlias(e.target.value)}
             placeholder="PX_KAI"
             autoComplete="username"
           />
@@ -140,24 +353,12 @@ export default function AuthForm() {
           <span>Acepto las normas del salón arcade</span>
         </label>
 
-        <button className="btn lg magenta auth-submit" type="submit">
-          CREAR Y JUGAR
+        {message("up")}
+
+        <button className="btn lg magenta auth-submit" type="submit" disabled={busy}>
+          {busy ? "CREANDO…" : "CREAR Y JUGAR"}
         </button>
       </form>
-
-      <button className="btn ghost auth-guest" type="button" onClick={() => { signIn(null); router.push("/juegos"); }}>
-        JUGAR COMO INVITADO
-      </button>
-
-      <div className="auth-divider">O CONTINÚA CON</div>
-      <div className="social">
-        <button className="btn ghost" type="button">
-          ◆ GOOGLE
-        </button>
-        <button className="btn ghost" type="button">
-          ▣ GITHUB
-        </button>
-      </div>
 
       <div className="auth-terms">AL ENTRAR ACEPTAS LOS TÉRMINOS DEL SALÓN ARCADE</div>
     </div>

@@ -19,7 +19,7 @@ export interface ScoreRow {
   game_id: string;
   player_name: string;
   score: number;
-  /** Siempre null hasta el spec de Supabase Auth. */
+  /** Id de `auth.users` si la partida se guardó con sesión; null para invitados (SPEC 13). */
   user_id: string | null;
   created_at: string;
 }
