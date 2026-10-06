@@ -13,18 +13,18 @@ import type { AuthError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { isStrongPassword, PASSWORD_RULES } from "@/lib/password";
 import { normalizeName, useSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
 
 const ALIAS_MAX = 10;
-const PASSWORD_MIN = 6;
 
 /** Mensajes en español para los codigos de error de Supabase Auth. */
 const AUTH_ERRORS: Record<string, string> = {
   invalid_credentials: "Correo o contraseña incorrectos.",
   email_not_confirmed: "Confirma tu correo antes de entrar: busca el enlace en tu bandeja.",
   user_already_exists: "Ya hay una cuenta con ese correo. Inicia sesión.",
-  weak_password: `La contraseña es demasiado débil. Usa al menos ${PASSWORD_MIN} caracteres.`,
+  weak_password: PASSWORD_RULES,
   over_email_send_rate_limit: "Se han enviado demasiados correos. Espera unos minutos y vuelve a probar.",
 };
 
@@ -126,7 +126,7 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
     const fail = (text: string) => setError({ place: "up", text });
     if (!alias.trim()) return fail("Elige un alias de jugador.");
     if (!email.trim()) return fail("Escribe tu correo electrónico.");
-    if (password.length < PASSWORD_MIN) return fail(`La contraseña necesita al menos ${PASSWORD_MIN} caracteres.`);
+    if (!isStrongPassword(password)) return fail(PASSWORD_RULES);
     if (password !== repeat) return fail("Las contraseñas no coinciden.");
     if (!terms) return fail("Acepta las normas del salón para crear la cuenta.");
 

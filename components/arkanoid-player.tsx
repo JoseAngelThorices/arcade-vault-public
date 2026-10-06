@@ -5,8 +5,8 @@
 // arena de relleno. Es cliente entero porque `ssr: false` solo se admite en
 // Client Components, y el canvas no existe en el servidor.
 //
-// Al guardar, la puntuacion se inserta en la tabla `scores` de Supabase y el
-// nombre se recuerda en `av_player_name` para la siguiente partida (SPEC 08).
+// Al guardar, la puntuacion se inserta en la tabla `scores` de Supabase (SPEC 08).
+// Solo se guarda con sesion y firmada con el alias de la cuenta (SPEC 14).
 // Arkanoid no tiene niveles: COMBO ocupa su hueco en el HUD.
 //
 // En movil (< md) el HUD se oculta y el juego se maneja con el gamepad virtual
@@ -15,8 +15,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
-import { readPlayerName, writePlayerName } from "@/lib/player-name";
-import { normalizeName, useSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 import { useSkin } from "@/lib/skins";
 import SkinPicker from "@/components/skin-picker";
 import MobileGamepad, { type KeyMap } from "@/components/mobile-gamepad";
@@ -43,9 +42,6 @@ export default function ArkanoidPlayer({ game }: { game: GameRow }) {
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  // null mientras no haya nombre pre-rellenado ni editado, para que siga el
-  // alias de la sesion cuando esta se termina de leer.
-  const [name, setName] = useState<string | null>(null);
   // Cambiarla remonta el canvas: partida nueva desde cero.
   const [run, setRun] = useState(0);
   // Cambiarla no remonta el canvas: el motor la lee en cada frame. Sin nada
@@ -53,33 +49,25 @@ export default function ArkanoidPlayer({ game }: { game: GameRow }) {
   const [skin, setSkin] = useSkin();
 
   const playerName = ready && username ? username : "INVITADO";
-  const scoreName = name ?? playerName;
   const locked = saveStatus === "saving" || saveStatus === "saved";
 
-  /** Abre el modal con el alias de la cuenta o el ultimo nombre guardado. */
-  const openGameOver = () => {
-    // Con sesion manda el alias de la cuenta; sin ella, el ultimo nombre guardado.
-    const prefill = ready && username ? username : readPlayerName();
-    if (prefill) setName(normalizeName(prefill));
-    setOver(true);
-  };
+  const openGameOver = () => setOver(true);
 
   const save = async () => {
-    const playerNameToSave = scoreName.trim();
-    if (!playerNameToSave || locked) return;
+    // RLS solo admite inserciones con sesion y a nombre propio (SPEC 14).
+    if (!user || !username || locked) return;
     setSaveStatus("saving");
 
     const { error } = await createClient()
       .from("scores")
-      .insert({ game_id: game.id, player_name: playerNameToSave, score, user_id: user?.id ?? null });
+      .insert({ game_id: game.id, player_name: username, score, user_id: user.id });
 
     if (error) {
       setSaveStatus("error");
       return;
     }
-    writePlayerName(playerNameToSave);
     // Registro local de la sesion: alimenta "TU MEJOR MARCA" del Salón.
-    saveScore({ game: game.id, score, name: playerNameToSave });
+    saveScore({ game: game.id, score, name: username });
     setSaveStatus("saved");
   };
 
@@ -184,21 +172,13 @@ export default function ArkanoidPlayer({ game }: { game: GameRow }) {
               <div className="toast-saved" role="status">
                 ▸ PUNTUACIÓN GUARDADA_
               </div>
-            ) : (
+            ) : !ready ? null : user ? (
               <>
                 <div className="input-row">
-                  <input
-                    value={scoreName}
-                    onChange={(e) => setName(normalizeName(e.target.value))}
-                    placeholder="TUS INICIALES"
-                    aria-label="Nombre para la tabla de puntuaciones"
-                    disabled={locked}
-                  />
-                  <button
-                    className="btn yellow"
-                    onClick={() => void save()}
-                    disabled={locked || !scoreName.trim()}
-                  >
+                  <div className="save-as">
+                    {username}
+                  </div>
+                  <button className="btn yellow" onClick={() => void save()} disabled={locked}>
                     {saveStatus === "saving" ? "GUARDANDO…" : "GUARDAR PUNTUACIÓN"}
                   </button>
                 </div>
@@ -208,6 +188,13 @@ export default function ArkanoidPlayer({ game }: { game: GameRow }) {
                   </p>
                 )}
               </>
+            ) : (
+              <div className="save-login">
+                <p>Inicia sesión para guardar tu puntuación en la clasificación.</p>
+                <Link className="btn yellow" href="/acceso">
+                  INICIAR SESIÓN
+                </Link>
+              </div>
             )}
 
             <div className="actions">

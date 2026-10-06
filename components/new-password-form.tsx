@@ -6,10 +6,9 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { isStrongPassword, PASSWORD_RULES } from "@/lib/password";
 import { useSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
-
-const PASSWORD_MIN = 6;
 
 export default function NewPasswordForm() {
   const { session, ready } = useSession();
@@ -22,7 +21,7 @@ export default function NewPasswordForm() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
-    if (password.length < PASSWORD_MIN) return setError(`La contraseña necesita al menos ${PASSWORD_MIN} caracteres.`);
+    if (!isStrongPassword(password)) return setError(PASSWORD_RULES);
     if (password !== repeat) return setError("Las contraseñas no coinciden.");
 
     setBusy(true);
@@ -35,7 +34,7 @@ export default function NewPasswordForm() {
         error.code === "same_password"
           ? "La contraseña nueva debe ser distinta de la anterior."
           : error.code === "weak_password"
-            ? `La contraseña es demasiado débil. Usa al menos ${PASSWORD_MIN} caracteres.`
+            ? PASSWORD_RULES
             : "No se pudo cambiar la contraseña. Pide un enlace nuevo y vuelve a intentarlo.",
       );
       return;
