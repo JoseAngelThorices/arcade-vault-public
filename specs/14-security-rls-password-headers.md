@@ -1,6 +1,6 @@
 # SPEC 14 — Seguridad: puntuaciones solo con cuenta, contraseña robusta y headers HTTP
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 04-integracion-de-supabase · 06-games-table-leaderboard-supabase · 13-supabase-auth
 > **Fecha:** 2026-10-06
 > **Objetivo:** Aplicar el checklist de `references/security/checklist.md`: solo los
@@ -252,23 +252,23 @@ const PASSWORD_REGEX =
 
 ## Criterios de aceptación
 
-- [ ] Un invitado (rol `anon`) no puede insertar en `scores`.
-- [ ] Un usuario autenticado solo inserta con `user_id = auth.uid()`; `null` u otro
+- [x] Un invitado (rol `anon`) no puede insertar en `scores`.
+- [x] Un usuario autenticado solo inserta con `user_id = auth.uid()`; `null` u otro
       `user_id` se rechazan.
-- [ ] `player_name` de una fila nueva es siempre el alias de la cuenta.
-- [ ] `score < 0` y nombres fuera de 1–10 caracteres se rechazan.
-- [ ] `games` sigue sin ninguna escritura posible desde el cliente.
-- [ ] El asesor de seguridad no muestra avisos de `rls_auto_enable()`, y el event
+- [x] `player_name` de una fila nueva es siempre el alias de la cuenta.
+- [x] `score < 0` y nombres fuera de 1–10 caracteres se rechazan.
+- [x] `games` sigue sin ninguna escritura posible desde el cliente.
+- [x] El asesor de seguridad no muestra avisos de `rls_auto_enable()`, y el event
       trigger `ensure_rls` sigue existiendo.
-- [ ] Rate limit de sign-ups/sign-ins configurado en el Dashboard.
+- [x] Rate limit de sign-ups/sign-ins configurado en el Dashboard.
 - [ ] Registro y contraseña nueva rechazan en el cliente lo que Supabase rechazaría
       (incluido `Contraseña1`), sin petición de red; `Abc123!@` pasa.
 - [ ] Sin sesión, el fin de partida invita a iniciar sesión y no ofrece guardar.
 - [ ] Con sesión, se guarda con el alias fijo y aparece en la clasificación.
-- [ ] Las respuestas HTTP llevan `X-Content-Type-Options`, `X-Frame-Options`,
+- [x] Las respuestas HTTP llevan `X-Content-Type-Options`, `X-Frame-Options`,
       `Referrer-Policy` y `X-DNS-Prefetch-Control`.
-- [ ] `/acceso/nueva-clave` sin sesión redirige a `/acceso?error=enlace`.
-- [ ] Lint, tipos y build sin errores.
+- [x] `/acceso/nueva-clave` sin sesión redirige a `/acceso?error=enlace`.
+- [x] Lint, tipos y build sin errores.
 
 ---
 
