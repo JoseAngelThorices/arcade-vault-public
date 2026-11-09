@@ -1743,9 +1743,23 @@
     color: var(--yellow); letter-spacing: 0.16em; background: rgba(245,255,0,0.04);
     border-bottom: 1px solid var(--line-2);
   }
+  /* Filas con scroll propio: 10 a la vista (filas de 48,5 px; 44 px en movil); el scroll no arrastra la pagina al llegar al final. */
+  .hall-scroll {
+    max-height: 485px; overflow-y: auto; overscroll-behavior: contain;
+    scrollbar-width: thin; scrollbar-color: var(--cyan) var(--bg-2);
+  }
+  .hall-scroll:focus-visible { outline: 1px solid var(--cyan); outline-offset: -1px; }
+  /* Pie de la tabla: contador de partidas y CARGAR MAS (scroll infinito). */
+  .hall-more {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    padding: 18px; font-family: var(--pixel); font-size: 9px;
+    color: var(--ink-faint); letter-spacing: 0.16em;
+  }
+  .hall-more .save-error { font-family: var(--mono); font-size: 12px; letter-spacing: 0; }
 
   @media (max-width: 720px) {
     .hall-table .th, .hall-table .tr { grid-template-columns: 50px 1fr 90px 90px; font-size: 12px; padding: 10px 12px; }
+    .hall-scroll { max-height: 440px; }
     .av-grid { padding: 0 16px; }
     .av-hero { padding: 36px 16px 16px; }
     .av-filters { padding: 0 16px; }

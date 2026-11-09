@@ -1,19 +1,31 @@
 "use client";
 
-// Salon de la Fama (references/templates/salon.jsx). La primera pestaña llega
-// del servidor; al cambiar de pestaña se piden a Supabase las mejores
-// puntuaciones de ese juego desde el navegador (SPEC 06).
+// Salon de la Fama (references/templates/salon.jsx). La primera pagina de la
+// primera pestaña llega del servidor; al cambiar de pestaña se piden a Supabase
+// las mejores puntuaciones de ese juego desde el navegador (SPEC 06).
+//
+// Una fila por jugador con su mejor marca (RPC `get_leaderboard`), no una por
+// partida. La tabla muestra a todos los jugadores dentro de un contenedor con
+// scroll propio (unas 10 filas a la vista): se cargan por paginas de
+// `pageSize` al acercarse a su final (IntersectionObserver con ese contenedor
+// como raiz), y el boton CARGAR MAS hace lo mismo si el observador no salta.
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import LeaderboardEmpty from "@/components/leaderboard-empty";
 import PlayerLink from "@/components/player-link";
 import { formatScoreDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
+import { fetchLeaderboard, fetchLeaderboardRank } from "@/lib/supabase/leaderboard";
 import type { GameRow, ScoreRow } from "@/lib/supabase/types";
 
-type Props = { games: GameRow[]; initialScores: ScoreRow[]; limit: number };
+type Props = {
+  games: GameRow[];
+  initialScores: ScoreRow[];
+  initialTotal: number;
+  pageSize: number;
+};
 type Status = "idle" | "loading" | "error";
 
 /** Las fechas de la tabla van en DD/MM/AAAA. */
@@ -40,36 +52,85 @@ function PodiumSlot({ row, rank }: { row: ScoreRow | undefined; rank: 1 | 2 | 3 
   );
 }
 
-export default function HallOfFame({ games, initialScores, limit }: Props) {
+export default function HallOfFame({ games, initialScores, initialTotal, pageSize }: Props) {
   const [tab, setTab] = useState(games[0]?.id ?? "");
   const [rows, setRows] = useState(initialScores);
+  const [total, setTotal] = useState(initialTotal);
   const [status, setStatus] = useState<Status>("idle");
+  const [more, setMore] = useState<Status>("idle");
+  // Puesto de "tu mejor marca" cuando no sale de las filas cargadas.
+  const [remoteRank, setRemoteRank] = useState<{ key: string; rank: number } | null>(null);
   // Solo cuenta la respuesta de la ultima pestaña pedida: si el usuario cambia
   // rapido, las respuestas que llegan tarde se descartan.
   const requestId = useRef(0);
+  const sentinel = useRef<HTMLDivElement>(null);
+  const scroller = useRef<HTMLDivElement>(null);
   const { user, ready, bestScoreFor } = useSession();
+
+  const hasMore = rows.length < total;
 
   const load = async (gameId: string) => {
     const id = ++requestId.current;
     setStatus("loading");
+    setMore("idle");
+    scroller.current?.scrollTo({ top: 0 });
 
-    const { data, error } = await createClient()
-      .from("scores")
-      .select("*, profiles(username, avatar)") // mismo select que getTopScores (SPEC 15)
-      .eq("game_id", gameId)
-      .order("score", { ascending: false })
-      .order("created_at", { ascending: true })
-      .limit(limit)
-      .returns<ScoreRow[]>();
+    try {
+      const page = await fetchLeaderboard(createClient(), gameId, 0, pageSize);
+      if (id !== requestId.current) return;
+      setRows(page.rows);
+      setTotal(page.total ?? 0);
+      setStatus("idle");
+    } catch {
+      if (id === requestId.current) setStatus("error");
+    }
+  };
 
-    if (id !== requestId.current) return;
-    if (error) {
-      setStatus("error");
+  const loadMore = async () => {
+    if (!hasMore || more === "loading" || status !== "idle") return;
+    const id = requestId.current;
+    setMore("loading");
+
+    let page;
+    try {
+      page = await fetchLeaderboard(createClient(), tab, rows.length, pageSize);
+    } catch {
+      if (id === requestId.current) setMore("error");
       return;
     }
-    setRows(data);
-    setStatus("idle");
+    if (id !== requestId.current) return; // cambio de pestaña mientras tanto
+
+    // Si un jugador mejora su marca mientras se baja, puede repetirse o moverse:
+    // se descartan los jugadores que ya estan en la tabla.
+    const key = (r: ScoreRow) => r.user_id ?? `guest:${r.player_name}`;
+    const seen = new Set(rows.map(key));
+    const merged = [...rows, ...page.rows.filter((r) => !seen.has(key(r)))];
+    setRows(merged);
+    // Pagina incompleta: no hay mas, aunque el total haya cambiado.
+    setTotal(page.rows.length < pageSize ? merged.length : Math.max(page.total ?? 0, merged.length));
+    setMore("idle");
   };
+
+  // El observador llama siempre a la ultima version de loadMore.
+  const loadMoreRef = useRef(loadMore);
+  useEffect(() => {
+    loadMoreRef.current = loadMore;
+  });
+
+  // Se recrea tras cada pagina: si el final sigue a la vista del contenedor,
+  // el observador nuevo salta otra vez y pide la siguiente.
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || !hasMore || status !== "idle" || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) void loadMoreRef.current();
+      },
+      { root: scroller.current, rootMargin: "200px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, status, rows.length, tab]);
 
   const selectTab = (gameId: string) => {
     if (gameId === tab && status !== "error") return;
@@ -81,7 +142,30 @@ export default function HallOfFame({ games, initialScores, limit }: Props) {
 
   // Solo hay fila propia si esta sesion guardo alguna puntuacion en este juego.
   const best = ready && user ? bestScoreFor(tab) : null;
-  const yourRank = best ? rows.filter((r) => r.score > best.score).length + 1 : 0;
+  const bestScore = best?.score ?? null;
+  const lastLoaded = rows.at(-1)?.score;
+  // Con todos los mejores ya cargados el puesto sale de la tabla; si no, se cuenta en Supabase.
+  const localRank =
+    bestScore !== null && (!hasMore || (lastLoaded !== undefined && bestScore >= lastLoaded))
+      ? rows.filter((r) => r.score > bestScore).length + 1
+      : null;
+  const rankKey = `${tab}|${bestScore}`;
+  const needsRemote = bestScore !== null && localRank === null && status === "idle";
+
+  useEffect(() => {
+    if (!needsRemote || bestScore === null) return;
+    let alive = true;
+    fetchLeaderboardRank(createClient(), tab, bestScore)
+      .then((rank) => {
+        if (alive) setRemoteRank({ key: `${tab}|${bestScore}`, rank });
+      })
+      .catch(() => {}); // sin puesto se muestra "#—"
+    return () => {
+      alive = false;
+    };
+  }, [needsRemote, tab, bestScore]);
+
+  const yourRank = localRank ?? (remoteRank?.key === rankKey ? remoteRank.rank : null);
   const tabTitle = games.find((g) => g.id === tab)?.title ?? "";
   const loading = status === "loading";
 
@@ -133,6 +217,21 @@ export default function HallOfFame({ games, initialScores, limit }: Props) {
               )}
 
               <div className="hall-table">
+                {/* Fuera del scroll, arriba: siempre a la vista. */}
+                {best && (
+                  <>
+                    <div className="tr you-label">▸ TU MEJOR MARCA EN {tabTitle}</div>
+                    <div className="tr you">
+                      <div className="rk">
+                        {yourRank ? `#${String(yourRank).padStart(2, "0")}` : "#—"}
+                      </div>
+                      <div className="pl">{best.name}</div>
+                      <div className="sc">{best.score.toLocaleString("es-ES")}</div>
+                      <div className="dt">{formatDate(best.at)}</div>
+                    </div>
+                  </>
+                )}
+
                 {rows.length === 0 ? (
                   <LeaderboardEmpty gameId={tab} />
                 ) : (
@@ -143,31 +242,42 @@ export default function HallOfFame({ games, initialScores, limit }: Props) {
                       <div>PUNTUACIÓN</div>
                       <div>FECHA</div>
                     </div>
-                    {rows.map((row, i) => (
-                      <div
-                        key={row.id}
-                        className={"tr" + (i < 3 ? ` top${i + 1}` : "")}
-                        style={{ animationDelay: `${i * 50}ms` }}
-                      >
-                        <div className="rk">#{String(i + 1).padStart(2, "0")}</div>
-                        <div className="pl">
-                          <PlayerLink row={row} />
+                    <div className="hall-scroll" ref={scroller} tabIndex={0} aria-label={`Puntuaciones de ${tabTitle}`}>
+                      {rows.map((row, i) => (
+                        <div
+                          key={row.id}
+                          className={"tr" + (i < 3 ? ` top${i + 1}` : "")}
+                          // Cada pagina nueva entra escalonada desde su primera fila.
+                          style={{ animationDelay: `${(i % pageSize) * 40}ms` }}
+                        >
+                          <div className="rk">#{String(i + 1).padStart(2, "0")}</div>
+                          <div className="pl">
+                            <PlayerLink row={row} />
+                          </div>
+                          <div className="sc">{row.score.toLocaleString("es-ES")}</div>
+                          <div className="dt">{formatScoreDate(row.created_at)}</div>
                         </div>
-                        <div className="sc">{row.score.toLocaleString("es-ES")}</div>
-                        <div className="dt">{formatScoreDate(row.created_at)}</div>
-                      </div>
-                    ))}
-                  </>
-                )}
+                      ))}
 
-                {best && (
-                  <>
-                    <div className="tr you-label">▸ TU MEJOR MARCA EN {tabTitle}</div>
-                    <div className="tr you" style={{ animationDelay: `${rows.length * 50 + 50}ms` }}>
-                      <div className="rk">#{String(yourRank).padStart(2, "0")}</div>
-                      <div className="pl">{best.name}</div>
-                      <div className="sc">{best.score.toLocaleString("es-ES")}</div>
-                      <div className="dt">{formatDate(best.at)}</div>
+                      <div className="hall-more" ref={sentinel}>
+                        <span>
+                          {rows.length.toLocaleString("es-ES")} DE {total.toLocaleString("es-ES")} JUGADORES
+                        </span>
+                        {more === "error" && (
+                          <p className="save-error" role="alert">
+                            No se pudieron cargar más puntuaciones.
+                          </p>
+                        )}
+                        {hasMore && (
+                          <button
+                            className="btn"
+                            onClick={() => void loadMore()}
+                            disabled={more === "loading" || loading}
+                          >
+                            {more === "loading" ? "CARGANDO…" : more === "error" ? "REINTENTAR" : "CARGAR MÁS"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
