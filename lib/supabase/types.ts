@@ -54,3 +54,13 @@ export interface PlayerStatRow {
 export type RecentScoreRow = Pick<ScoreRow, "id" | "game_id" | "score" | "created_at"> & {
   games: Pick<GameRow, "title"> | null;
 };
+
+/**
+ * Fila de la RPC `get_leaderboard` (Salón de la Fama): la mejor marca de cada
+ * jugador, con su perfil aplanado y `total` = jugadores distintos del juego.
+ */
+export interface LeaderboardRpcRow extends Omit<ScoreRow, "profiles"> {
+  username: string | null;
+  avatar: ProfileRow["avatar"] | null;
+  total: number;
+}
