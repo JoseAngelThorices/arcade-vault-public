@@ -1333,6 +1333,12 @@
   /* Sin sesion no se guarda: aviso y enlace a /acceso (SPEC 14). */
   .modal .save-login { margin: 22px 0 12px; }
   .modal .save-login p { margin: 0 0 12px; font-family: var(--mono); font-size: 12px; color: var(--ink-dim); }
+  /* Creditos de invitado (SPEC 02, ampliacion). */
+  .modal .save-login p.credits-left { margin: -4px 0 14px; color: var(--yellow); }
+  .no-credits-text { margin: 18px 0 6px; font-family: var(--mono); font-size: 13px; line-height: 1.7; color: var(--ink-dim); }
+  .no-credits-back { display: inline-block; margin-top: 18px; font-family: var(--pixel); font-size: 9px; letter-spacing: 0.16em; color: var(--ink-faint); }
+  .no-credits-back:hover { color: var(--cyan); }
+  .credit-retry { margin-top: 14px; }
   .toast-saved {
     font-family: var(--pixel);
     font-size: 11px;

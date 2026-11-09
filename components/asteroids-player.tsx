@@ -19,6 +19,8 @@ import { useSkin } from "@/lib/skins";
 import SkinPicker from "@/components/skin-picker";
 import MobileGamepad, { type KeyMap } from "@/components/mobile-gamepad";
 import SoundToggle from "@/components/sound-toggle";
+import { CreditGateOverlay, CreditsLeft, NoCreditsModal } from "@/components/credit-gate";
+import { useCreditGate } from "@/lib/credits-client";
 import { useGameAudio, useSoundOn } from "@/lib/use-sound";
 import { createClient } from "@/lib/supabase/client";
 import type { GameRow } from "@/lib/supabase/types";
@@ -34,6 +36,9 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export default function AsteroidsPlayer({ game }: { game: GameRow }) {
   const { user, username, ready, saveScore } = useSession();
+  // Creditos (SPEC 02): el canvas solo se monta con la partida cobrada.
+  const gate = useCreditGate();
+  const playing = gate.status === "ok";
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
@@ -84,6 +89,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
     setSaveStatus("idle");
     setPaused(false);
     setRun((r) => r + 1);
+    gate.newRun();
   };
 
   return (
@@ -110,10 +116,10 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
         </div>
 
         <div className="hud-actions">
-          <button className="btn yellow" onClick={() => setPaused((p) => !p)} disabled={over}>
+          <button className="btn yellow" onClick={() => setPaused((p) => !p)} disabled={over || !playing}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
-          <button className="btn magenta" onClick={openGameOver} disabled={over}>
+          <button className="btn magenta" onClick={openGameOver} disabled={over || !playing}>
             FIN
           </button>
           <SoundToggle />
@@ -125,18 +131,21 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
 
       <div className="crt">
         <div className="crt-screen">
-          <AsteroidsGame
-            key={run}
-            paused={paused || over}
-            skin={skin}
-            onScoreChange={setScore}
-            onLivesChange={setLives}
-            onLevelChange={setLevel}
-            onGameOver={(finalScore) => {
-              setScore(finalScore);
-              openGameOver();
-            }}
-          />
+          {playing && (
+            <AsteroidsGame
+              key={run}
+              paused={paused || over}
+              skin={skin}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
+              onGameOver={(finalScore) => {
+                setScore(finalScore);
+                openGameOver();
+              }}
+            />
+          )}
+          <CreditGateOverlay gate={gate} />
           {paused && !over && (
             <div className="crt-content crt-pause">
               <div>
@@ -156,7 +165,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
       <MobileGamepad
         keyMap={KEY_MAP}
         paused={paused}
-        disabled={over}
+        disabled={over || !playing}
         onPauseToggle={() => setPaused((p) => !p)}
         onEnd={openGameOver}
         skin={skin}
@@ -167,6 +176,8 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
       <div className="sound-mobile md:hidden">
         <SoundToggle />
       </div>
+
+      <NoCreditsModal gate={gate} />
 
       {over && (
         <div className="modal-bd">
@@ -198,6 +209,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
             ) : (
               <div className="save-login">
                 <p>Inicia sesión para guardar tu puntuación en la clasificación.</p>
+                <CreditsLeft />
                 <Link className="btn yellow" href="/acceso">
                   INICIAR SESIÓN
                 </Link>

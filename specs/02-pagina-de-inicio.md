@@ -5,7 +5,7 @@
 > **Fecha:** 2026-09-22
 > **Objetivo:** Portar la landing de `references/templates/home-about/` a la ruta `/` y mover la biblioteca de juegos a `/juegos`, de modo que al cargar la aplicación aparezca la página de inicio.
 
-> **Nota (2026-11-09):** la landing ha cambiado desde que se implementó este spec: ACTIVIDAD EN VIVO usa datos reales, ya no hay sección de precios y han cambiado los botones. El plan y los criterios de abajo describen el port original; lo que ya no aplica está en [Cambios posteriores](#cambios-posteriores-2026-11-09).
+> **Nota (2026-11-09):** la landing ha cambiado desde que se implementó este spec: ACTIVIDAD EN VIVO usa datos reales, ya no hay sección de precios y han cambiado los botones. El plan y los criterios de abajo describen el port original; lo que ya no aplica está en [Cambios posteriores](#cambios-posteriores-2026-11-09). Los créditos diarios para invitados están en [Ampliación: créditos diarios para invitados](#ampliación-créditos-diarios-para-invitados).
 
 ---
 
@@ -276,6 +276,154 @@ Cambios hechos sin spec propio a petición del usuario (PR #28). Sustituyen a lo
 - **No:** actualización en tiempo real (Realtime o sondeo). «En vivo» significa «al cargar la página».
 - **Sí:** quitar los CTA del héroe y `VER TODOS LOS JUEGOS`. Para jugar o registrarse quedan los botones del cierre y el Nav.
 - **Sí:** reemplazar `INSERTAR MONEDA` por `JUGAR SIN REGISTRARTE`, porque llevaba al mismo sitio.
+
+---
+
+## Ampliación: créditos diarios para invitados
+
+> **Estado:** Implementado
+> **Fecha:** 2026-11-09
+> **Objetivo:** Dar valor a la moneda: quien juega sin registrarse tiene **10 créditos al día** y cada partida gasta uno. Puede probar los juegos, pero no jugar sin límite, y su puntuación no se guarda. Con cuenta se juega sin límite.
+
+### Comportamiento
+
+- **Invitado** (sin sesión de Supabase):
+  - Empieza cada día con 10 créditos. El día se cuenta en `Europe/Madrid` y los créditos se recargan a las 00:00 de esa zona, no 24 h después de la primera partida.
+  - **Cada partida gasta 1 crédito:** entrar en `/jugar/<id>`, pulsar JUGAR DE NUEVO o recargar la página del juego.
+  - Ejemplo: entra en Snake (quedan 9) y luego en Tetris (quedan 8).
+  - Con 0 créditos, el reproductor no arranca el juego y muestra un modal.
+- **Con cuenta:** no gasta créditos y juega sin límite. El Nav muestra `CRÉDITOS · ∞`.
+- **La puntuación de un invitado no se guarda** (ya es así desde SPEC 14). El modal de fin de partida invita a iniciar sesión y ahora también dice cuántos créditos quedan.
+- **Nav:** `CRÉDITOS · NN` muestra los créditos reales que quedan, en lugar del `03` fijo, en la barra y en el panel móvil. Mientras carga muestra `CRÉDITOS · --`.
+
+### Modelo de datos
+
+**Sin base de datos.** Una cookie firmada por el servidor:
+
+| Campo | Valor |
+| --- | --- |
+| Nombre | `av_credits` |
+| Contenido | `<día AAAA-MM-DD>.<usados 0–10>.<últimoRunId>.<firma>` |
+| Firma | HMAC-SHA256 de los tres primeros campos con `CREDITS_SECRET` (variable nueva, solo de servidor, en `specs/.env.template`). |
+| Opciones | `httpOnly`, `secure` en producción, `sameSite: "lax"`, `path: "/"`. Caduca a las 00:00 de `Europe/Madrid` del día siguiente. |
+
+**Reglas de lectura de la cookie:**
+- Si no hay cookie, la firma no cuadra o el día no es hoy, se cuenta como 0 créditos usados.
+- Manipular la cookie no da créditos de más: como mucho la invalida, y eso equivale a empezar el día.
+- **Constante:** `DAILY_CREDITS = 10`, en `lib/credits.ts`, junto con las funciones de firmar, verificar y calcular el día.
+
+### API
+
+`app/api/credits/route.ts`, Route Handler. Los Server Components no pueden escribir cookies; un Route Handler sí.
+
+**`GET /api/credits`** → `{ unlimited: boolean, left: number, resetsAt: string }`
+- Solo lee, no gasta.
+- Con sesión devuelve `unlimited: true`.
+
+**`POST /api/credits`** con cuerpo `{ runId: string }` → `{ ok: boolean, unlimited: boolean, left: number, resetsAt: string }`
+- Con sesión: `ok: true` sin tocar nada.
+- Sin sesión y con créditos: gasta 1, reescribe la cookie y devuelve `ok: true`.
+- Sin créditos: devuelve `ok: false` y no toca la cookie.
+- **Idempotente por `runId`:** si llega el mismo `runId` que el último cobrado, no vuelve a cobrar. El reproductor genera un `runId` por partida (`crypto.randomUUID()` al montar y en cada JUGAR DE NUEVO), así que el doble montaje de React en desarrollo o un reintento de red no gastan dos créditos.
+
+La sesión se comprueba con `createClient()` de `lib/supabase/server.ts` y `auth.getClaims()`, igual que en `proxy.ts`.
+
+### Cliente
+
+- **`lib/credits-client.tsx`:** `CreditsProvider` y `useCredits()` → `{ ready, unlimited, left, spend(runId) }`.
+  - Se monta dentro de `SessionProvider` en `app/layout.tsx`.
+  - Llama a `GET` al cargar y otra vez cuando cambia la sesión (login o logout).
+  - `spend` llama a `POST` y actualiza `left`.
+- **Reproductores de los cinco juegos** (`components/<id>-player.tsx`): el canvas no se monta hasta que `spend(runId)` devuelve `ok`.
+  - Mientras tanto el CRT muestra `INSERTANDO MONEDA…`.
+  - Con `ok: false` muestra el modal **SIN CRÉDITOS**: «Has gastado tus 10 partidas gratis de hoy. Vuelven a las 00:00.», con los botones `CREAR CUENTA` (`/acceso?registro`) e `INICIAR SESIÓN` (`/acceso`) y el enlace `VOLVER AL VAULT`.
+  - JUGAR DE NUEVO genera un `runId` nuevo y vuelve a pasar por `spend`.
+  - La lógica común va en un hook (`useCreditGate()`) para no repetirla en cinco ficheros.
+- **El reproductor genérico** `/jugar/[id]` (juegos sin implementación) no gasta créditos.
+
+### Plan de implementación
+
+1. **`lib/credits.ts`:**
+   - `DAILY_CREDITS`.
+   - `madridDay(now)` y `nextMadridMidnight(now)`.
+   - `signCredits` y `readCredits` con `node:crypto` (`createHmac`, `timingSafeEqual`).
+   - Añadir `CREDITS_SECRET` a `specs/.env.template`.
+2. **`app/api/credits/route.ts`:** `GET` y `POST` según la sección API.
+3. **`lib/credits-client.tsx`:** `CreditsProvider` y `useCredits()`; montarlo en `app/layout.tsx`.
+4. **`components/nav.tsx`:** sustituir los dos `CRÉDITOS · 03` por el valor de `useCredits()`.
+5. **`useCreditGate()`:** aplicarlo en los cinco reproductores, con el estado `INSERTANDO MONEDA…`, el modal SIN CRÉDITOS y el `runId` nuevo en cada reinicio.
+6. **Modal de fin de partida del invitado:** añadir «Te quedan N créditos hoy».
+7. **Verificación:**
+   - `npm run lint`, `npx tsc --noEmit` y `npm run build`.
+   - Prueba con Playwright como invitado: 10 partidas entre varios juegos y JUGAR DE NUEVO; la 11.ª muestra SIN CRÉDITOS.
+   - Prueba con un bot con sesión: juega más de 10 sin límite.
+
+### Criterios de aceptación
+
+- [ ] Un invitado nuevo ve `CRÉDITOS · 10` en el Nav.
+- [ ] Entrar en Snake deja 9 y entrar después en Tetris deja 8; JUGAR DE NUEVO gasta otro.
+- [ ] Recargar la página del juego gasta un crédito. El doble montaje de desarrollo no gasta dos.
+- [ ] Con 0 créditos, `/jugar/<id>` no arranca el juego y muestra SIN CRÉDITOS con `CREAR CUENTA` e `INICIAR SESIÓN`.
+- [ ] Editar o borrar la cookie `av_credits` a mano nunca da más de 10 créditos en el mismo día.
+- [ ] A las 00:00 de `Europe/Madrid` el invitado vuelve a tener 10.
+- [ ] Con sesión iniciada: `CRÉDITOS · ∞`, no se gasta nada y se puede jugar más de 10 partidas.
+- [ ] Al iniciar sesión estando a 0, se puede jugar sin recargar; al cerrar sesión se vuelve a los créditos del invitado.
+- [ ] La puntuación de un invitado sigue sin guardarse, y el modal de fin muestra los créditos que quedan.
+- [ ] `/jugar/[id]` (reproductor genérico) no gasta créditos.
+- [ ] Lint, tipos y build sin errores; sin avisos de hidratación.
+
+### Decisiones
+
+- **Sí:** cookie firmada en lugar de `localStorage`. No se puede editar a mano para darse créditos, y no necesita base de datos.
+- **No:** guardar los créditos en Supabase por IP. Una IP compartida (casa, instituto) repartiría los 10 créditos entre varias personas, y obligaría a guardar IPs, que son datos personales.
+- **Aceptado:** borrar las cookies o abrir una ventana privada da 10 créditos nuevos. Sin cuenta no hay forma razonable de identificar a alguien. El objetivo es que jugar sin límite cueste un esfuerzo y que registrarse sea lo cómodo, no impedirlo por completo.
+- **Sí:** cada partida gasta un crédito, también JUGAR DE NUEVO. Si no, con un crédito se jugaría sin fin sin salir de la página.
+- **Sí:** cobrar desde un Route Handler llamado por el reproductor, no en `proxy.ts` al pedir `/jugar/<id>`. Los prefetch de `<Link>` y las peticiones RSC gastarían créditos sin que nadie jugase.
+- **Sí:** idempotencia por `runId`, por el doble montaje de React en desarrollo y por los reintentos.
+- **Sí:** recarga a medianoche de `Europe/Madrid`, la misma zona que usa la app para las fechas (`lib/format.ts`).
+
+#### Desviaciones al implementar
+
+- **Componentes:** el overlay `INSERTANDO MONEDA…` y el modal **SIN CRÉDITOS** van en `components/credit-gate.tsx`, junto con `CreditsLeft` para el modal de fin.
+  - `CreditGateOverlay` se pinta dentro del CRT.
+  - `NoCreditsModal` va fuera del CRT, junto al modal de fin.
+  - `useCreditGate()` está en `lib/credits-client.tsx`.
+- **Error de red:** si `POST` falla por la red, el CRT muestra «NO SE PUDIERON COMPROBAR TUS CRÉDITOS» con un botón REINTENTAR, que repite el mismo `runId` y por tanto no cobra dos veces. Además, sin partida cobrada están desactivados PAUSA, FIN y el gamepad.
+- **Lecturas y cobros cruzados:** al abrir un juego, el `POST` del reproductor sale antes que el `GET` del provider, porque los efectos de los hijos se ejecutan primero. El `GET` viaja con la cookie anterior al cobro y su respuesta llegaba después, devolviendo el Nav a 10.
+  - Ahora un `GET` solo se aplica si no había ningún cobro en marcha al enviarlo ni empezó otro mientras tanto.
+  - Entre varios cobros, manda el último iniciado.
+- **`runId`:** se genera con `useState(crypto.randomUUID)`. No se pinta, así que el que se genera en el servidor no causa desajustes de hidratación.
+- **`CREDITS_SECRET`:** se generó un valor aleatorio en `.env.local`. Sin él, `/api/credits` responde 500 y el reproductor muestra REINTENTAR.
+
+#### Verificación
+
+Prueba con Playwright como invitado en un contexto de navegador nuevo:
+
+| Paso | Nav |
+| --- | --- |
+| Inicio | 10 |
+| Snake | 9 |
+| Tetris | 8 |
+| FIN | modal «Te quedan 8 créditos hoy» |
+| JUGAR DE NUEVO | 7 |
+| Recargar | 6 |
+| Seis juegos más | 0 |
+
+- La 11.ª partida muestra SIN CRÉDITOS, sin canvas y con FIN desactivado.
+- Al iniciar sesión con un bot: `∞` y 3 partidas más.
+- Al cerrar sesión: vuelve a `00`.
+- Con `curl`: repetir el `runId` no cobra, la 11.ª devuelve `ok: false`, una cookie manipulada vale lo mismo que no tener cookie y un `runId` inválido da 400.
+- `npx tsc --noEmit`, `npm run lint` (solo los avisos que ya había en `references/`) y `npm run build` sin errores.
+- No se probó el criterio «iniciar sesión estando a 0 y jugar sin recargar» en la misma página: el código vuelve a cobrar al cambiar la sesión, pero la prueba inició sesión en `/acceso` y volvió a entrar al juego.
+
+### Riesgos
+
+| Riesgo | Mitigación |
+| --- | --- |
+| `CREDITS_SECRET` sin definir en producción | `lib/credits.ts` lanza un error claro al firmar si falta; se añade a la plantilla de variables y al despliegue. |
+| Los bots Playwright de invitado (`scripts/bots`) se quedan sin créditos | `bots:jugar` juega con sesión iniciada, así que no le afecta. Las pruebas como invitado empiezan con un contexto de navegador nuevo, que trae 10 créditos. |
+| Un invitado pierde el crédito si cierra la pestaña nada más entrar | Es el comportamiento pedido: entrar a jugar gasta el crédito. |
+| Diferencia de reloj entre servidor y navegador | El día lo calcula siempre el servidor; el cliente solo muestra `resetsAt`. |
 
 ---
 
