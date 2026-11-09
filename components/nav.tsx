@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import PlayerAvatar from "@/components/player-avatar";
+import { useCredits } from "@/lib/credits-client";
 import { useSession } from "@/lib/session";
 
 /** La biblioteca sigue marcada mientras se navega por un juego concreto. */
@@ -17,6 +18,13 @@ function isLibrary(pathname: string) {
 export default function Nav() {
   const pathname = usePathname() || "";
   const { user, username, avatar, ready, signOut } = useSession();
+  const credits = useCredits();
+  // Creditos de invitado (SPEC 02): "--" hasta que responde el servidor, ∞ con cuenta.
+  const creditsLabel = !credits.ready
+    ? "--"
+    : credits.unlimited
+      ? "∞"
+      : String(credits.left).padStart(2, "0");
   const [open, setOpen] = useState(false);
 
   const homeActive = pathname === "/inicio";
@@ -68,7 +76,7 @@ export default function Nav() {
 
         <div className="coin-counter">
           <span className="coin" aria-hidden="true" />
-          <span>CRÉDITOS · 03</span>
+          <span>CRÉDITOS · {creditsLabel}</span>
         </div>
 
         {signedIn ? (
@@ -132,7 +140,7 @@ export default function Nav() {
         )}
         <div style={{ flex: 1 }} />
         <div className="pixel" style={{ fontSize: 9, color: "var(--ink-faint)", letterSpacing: "0.16em" }}>
-          CRÉDITOS · 03
+          CRÉDITOS · {creditsLabel}
         </div>
       </aside>
     </>
