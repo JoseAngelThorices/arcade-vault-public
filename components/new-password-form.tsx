@@ -49,8 +49,8 @@ export default function NewPasswordForm() {
           <h2>CONTRASEÑA ACTUALIZADA</h2>
           <p>Ya puedes entrar al Vault con tu contraseña nueva.</p>
         </div>
-        <Link className="btn lg auth-submit" href="/juegos">
-          IR A LA BIBLIOTECA
+        <Link className="btn lg auth-submit" href="/inicio">
+          IR AL INICIO
         </Link>
       </div>
     );

@@ -14,9 +14,29 @@
 // la peticion y lo pone en sus <script>; 'strict-dynamic' deja cargar los
 // chunks que esos scripts piden. Con nonce no puede haber paginas estaticas:
 // el layout raiz fuerza el renderizado dinamico con connection().
+//
+// Tras reiniciar el servidor, la primera carga de pagina lleva siempre a
+// /inicio: cada arranque tiene su BOOT_ID y el navegador guarda el ultimo que
+// vio en la cookie av_boot. Si no coincide, es un arranque nuevo.
 
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+
+/** Identificador de este arranque del servidor (cambia en cada reinicio). */
+const BOOT_ID = crypto.randomUUID();
+const BOOT_COOKIE = "av_boot";
+/** Rutas que no se desvian tras un reinicio: el inicio y los enlaces de correo. */
+const BOOT_EXEMPT = new Set(["/", "/inicio", "/acceso/callback"]);
+
+/** Carga completa de una pagina (no fetch de RSC, prefetch, API ni recursos). */
+function isPageLoad(request: NextRequest): boolean {
+  return (
+    request.method === "GET" &&
+    !request.headers.has("rsc") &&
+    !request.nextUrl.pathname.startsWith("/api/") &&
+    (request.headers.get("accept") ?? "").includes("text/html")
+  );
+}
 
 /** CSP de la app. Los estilos llevan 'unsafe-inline' por los atributos style de React. */
 function contentSecurityPolicy(nonce: string, https: boolean): string {
@@ -89,6 +109,17 @@ export async function proxy(request: NextRequest) {
     // Conserva las cookies que haya escrito el refresco de sesion.
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
     return redirect;
+  }
+
+  if (isPageLoad(request) && request.cookies.get(BOOT_COOKIE)?.value !== BOOT_ID) {
+    const bootCookie = { name: BOOT_COOKIE, value: BOOT_ID, httpOnly: true, sameSite: "lax" as const, secure: https, path: "/" };
+    if (!BOOT_EXEMPT.has(request.nextUrl.pathname)) {
+      const redirect = NextResponse.redirect(new URL("/inicio", request.url));
+      response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+      redirect.cookies.set(bootCookie);
+      return redirect;
+    }
+    response.cookies.set(bootCookie);
   }
 
   return response;

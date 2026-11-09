@@ -108,7 +108,7 @@ function SignedOutCard({ linkError, startOnSignUp }: { linkError: boolean; start
   const [resetEmail, setResetEmail] = useState("");
 
   const enterVault = () => {
-    router.push("/juegos");
+    router.push("/inicio");
     router.refresh();
   };
 
@@ -165,7 +165,7 @@ function SignedOutCard({ linkError, startOnSignUp }: { linkError: boolean; start
         password,
         options: {
           data: { username, avatar },
-          emailRedirectTo: callbackUrl("/juegos"),
+          emailRedirectTo: callbackUrl("/inicio"),
         },
       });
       if (error) return fail(authErrorMessage(error));

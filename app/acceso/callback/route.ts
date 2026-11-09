@@ -9,7 +9,7 @@
 // Sin Redirect URLs configuradas en Supabase, los enlaces de correo caen en la
 // Site URL (`/?code=…`) sin `next`; la raíz los reenvía aquí. En ese caso el
 // destino sale de cómo se creó la sesión: si fue un enlace de recuperación
-// (método `recovery` en el claim `amr`), a /acceso/nueva-clave; si no, a /juegos.
+// (método `recovery` en el claim `amr`), a /acceso/nueva-clave; si no, a /inicio.
 //
 // Cualquier fallo vuelve a /acceso?error=enlace, que muestra el aviso.
 
@@ -17,7 +17,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-const DEFAULT_NEXT = "/juegos";
+const DEFAULT_NEXT = "/inicio";
 const RECOVERY_NEXT = "/acceso/nueva-clave";
 
 const OTP_TYPES: readonly EmailOtpType[] = [
