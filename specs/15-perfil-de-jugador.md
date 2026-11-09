@@ -198,26 +198,26 @@ actual como reserva.
 
 ## Criterios de aceptación
 
-- [ ] `profiles` existe con RLS: lectura pública y ninguna escritura directa desde el cliente.
-- [ ] La cuenta actual tiene perfil `NEO_PLAYER` y sus puntuaciones muestran ese alias.
+- [x] `profiles` existe con RLS: lectura pública y ninguna escritura directa desde el cliente.
+- [x] La cuenta actual tiene perfil `NEO_PLAYER` y sus puntuaciones muestran ese alias.
 - [ ] Crear cuenta con un alias ya usado o fuera de `^[A-Z0-9_]{3,10}$` muestra error
       inline y no llama a `signUp`.
-- [ ] Una cuenta nueva aparece en `profiles` con el alias y el avatar elegidos.
-- [ ] Si el trigger de alta recibe un alias ocupado (carrera), el registro no falla y
+- [x] Una cuenta nueva aparece en `profiles` con el alias y el avatar elegidos.
+- [x] Si el trigger de alta recibe un alias ocupado (carrera), el registro no falla y
       el perfil queda como `PLAYER` + 4 dígitos.
 - [ ] El nav muestra el avatar elegido en escritorio y en el panel móvil.
 - [ ] Cambiar el alias en `/acceso` renombra todas las filas propias de `scores`, y el
       nav y los rankings muestran el alias nuevo.
 - [ ] Cambiar a un alias ocupado muestra "Ese alias ya está en uso." y no cambia nada.
-- [ ] Una puntuación guardada justo después de cambiar el alias se firma con el alias nuevo.
-- [ ] `/jugador/NEO_PLAYER` y `/jugador/neo_player` muestran el mismo perfil.
-- [ ] `/jugador/NOEXISTE` devuelve 404 con la página `not-found` propia.
-- [ ] El perfil muestra la mejor marca y el puesto por juego, y ese puesto coincide con
+- [x] Una puntuación guardada justo después de cambiar el alias se firma con el alias nuevo.
+- [x] `/jugador/NEO_PLAYER` y `/jugador/neo_player` muestran el mismo perfil.
+- [x] `/jugador/NOEXISTE` devuelve 404 con la página `not-found` propia.
+- [x] El perfil muestra la mejor marca y el puesto por juego, y ese puesto coincide con
       la posición en `/juego/[id]` cuando está en el top 10.
-- [ ] El perfil muestra las últimas 10 partidas, de la más reciente a la más antigua.
-- [ ] En `/juego/[id]` y `/salon`, los alias con cuenta enlazan al perfil y llevan mini avatar.
-- [ ] La página de perfil se ve completa sin JavaScript.
-- [ ] Lint, tipos y build sin errores.
+- [x] El perfil muestra las últimas 10 partidas, de la más reciente a la más antigua.
+- [x] En `/juego/[id]` y `/salon`, los alias con cuenta enlazan al perfil y llevan mini avatar.
+- [x] La página de perfil se ve completa sin JavaScript.
+- [x] Lint, tipos y build sin errores.
 
 ---
 
@@ -247,6 +247,18 @@ actual como reserva.
   solo de lectura y no hay que proteger rutas nuevas en `proxy.ts`.
 - **No: límite de cambios de alias.** En una LAN entre conocidos no compensa.
 - **No: redirigir alias antiguos.** Necesitaría historial de alias.
+
+### Desviaciones durante la implementación
+
+- **`username_available` es `security invoker`, no `security definer`.** `profiles`
+  ya es legible por `anon`, así que no necesita privilegios extra. Así evita el aviso
+  0028 del asesor.
+- **Funciones auxiliares nuevas:** `is_valid_avatar(text)` (usada por el `CHECK` y las
+  funciones), `sanitize_username(text)` y `pick_free_username(text, uuid)` (relleno y
+  trigger de alta; sin `EXECUTE` para `anon`/`authenticated`).
+- **Aviso 0029 del asesor aceptado** para `update_profile`: tiene que ser
+  `security definer` para renombrar las filas de `scores`, donde los clientes no
+  tienen `UPDATE`. Es el único aviso nuevo.
 
 ---
 
