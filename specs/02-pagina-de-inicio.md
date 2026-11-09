@@ -5,6 +5,8 @@
 > **Fecha:** 2026-09-22
 > **Objetivo:** Portar la landing de `references/templates/home-about/` a la ruta `/` y mover la biblioteca de juegos a `/juegos`, de modo que al cargar la aplicación aparezca la página de inicio.
 
+> **Nota (2026-11-09):** la landing ha cambiado desde que se implementó este spec: ACTIVIDAD EN VIVO usa datos reales, ya no hay sección de precios y han cambiado los botones. El plan y los criterios de abajo describen el port original; lo que ya no aplica está en [Cambios posteriores](#cambios-posteriores-2026-11-09).
+
 ---
 
 ## Por qué existe este spec
@@ -246,11 +248,42 @@ Cada paso deja el proyecto compilando y navegable.
 
 ---
 
+## Cambios posteriores (2026-11-09)
+
+Cambios hechos sin spec propio a petición del usuario (PR #28). Sustituyen a lo que dicen el plan y los criterios de aceptación de arriba en estos puntos:
+
+| Parte de la landing | Antes (este spec) | Ahora |
+| --- | --- | --- |
+| Botones del héroe | `▶ EXPLORAR JUEGOS` y `✦ CREAR CUENTA` | Ninguno. El héroe ya no tiene `min-height: calc(100vh - 60px)`: mide lo que su contenido (`padding: 96px 32px 24px`) y la primera sección sube a `margin-top: 40px`. En móvil (≤ 720 px) las siluetas pasan a 40 px y `opacity: 0.28` para no tapar el texto. |
+| `MiniCard` del rail | `<Link>` a `/juego/[id]` | `<div>` de muestra, sin enlace, sin cursor de mano ni elevación al pasar el ratón. |
+| Botón bajo el rail | `VER TODOS LOS JUEGOS →` a `/juegos` | Eliminado. |
+| Ticker de ACTIVIDAD EN VIVO | 7 filas literales de `TICKER` | Las 7 puntuaciones más recientes de `scores` (`getRecentActivity` en `lib/supabase/activity.ts`), con el título y el color del juego, y «hace N min / h / días» calculado en el servidor (`timeAgo` de `lib/format.ts`). El alias enlaza a `/jugador/[alias]` si la fila tiene perfil. |
+| TOP JUGADORES · HOY | 5 filas literales de `TOP_TODAY`, barra al `100 - i*16` % | Los 5 jugadores con más puntos **sumados** hoy, contando el día con la zona `Europe/Madrid` (RPC `get_top_players_today`). Agrupa por `user_id`, o por `player_name` en las filas de invitado. La barra es proporcional al primero. |
+| Sin datos | — | Mensaje `.activity-empty` en lugar de las filas: «Todavía no hay partidas guardadas…» / «Nadie ha puntuado hoy todavía…». |
+| `// 04 PRECIOS` | Tarjeta `JUGADOR VAULT` y 3 preguntas frecuentes | Eliminada, con su bloque de CSS PRICING. |
+| Cierre | `INSERTAR MONEDA →` a `/juegos` | `JUGAR SIN REGISTRARTE →` a `/juegos` y `CREAR CUENTA` a `/acceso?registro`, que abre directamente la pestaña de registro. Lo hace la prop `startOnSignUp` de `AuthForm`; sin el parámetro, `/acceso` sigue abriendo ENTRAR. Texto: «Gratis. Juega como invitado o crea tu cuenta para guardar tus puntuaciones en el ranking.» |
+
+**Criterios de aceptación que ya no aplican:** `▶ EXPLORAR JUEGOS…`, «Pulsar una minicard lleva a `/juego/[id]`», `VER TODOS LOS JUEGOS →…`, «Los kickers se leen… `// 04`» (ahora llegan a `// 03`), «El ticker muestra 7 filas; la primera es `NEONFOX…`», «barras decrecientes», la tarjeta de precios, las 3 preguntas frecuentes e `INSERTAR MONEDA →`.
+
+**Siguen valiendo:** la landing es un Server Component sin `"use client"`, y con JavaScript desactivado se ven todas las secciones, también la actividad, porque se renderiza en el servidor.
+
+**Base de datos:** migración `top_players_today` (solo en el historial de Supabase): función `get_top_players_today(p_limit)` (`security invoker`, `search_path = ''`, `EXECUTE` para `anon` y `authenticated`, límite entre 1 y 20) e índice `scores (created_at desc)`.
+
+### Decisiones de estos cambios
+
+- **Sí:** puntos **sumados** del día para el top, porque es lo que sugería el diseño con sus cifras de seis dígitos. Mezcla juegos de escalas distintas (Asteroids pesa más que Snake). Si se quiere otra métrica, como la mejor partida del día, basta con cambiar la RPC.
+- **Sí:** calcular «hace N min» en el servidor en cada petición. La página ya es dinámica porque `createClient()` lee las cookies, y así no hace falta un componente cliente.
+- **No:** actualización en tiempo real (Realtime o sondeo). «En vivo» significa «al cargar la página».
+- **Sí:** quitar los CTA del héroe y `VER TODOS LOS JUEGOS`. Para jugar o registrarse quedan los botones del cierre y el Nav.
+- **Sí:** reemplazar `INSERTAR MONEDA` por `JUGAR SIN REGISTRARTE`, porque llevaba al mismo sitio.
+
+---
+
 ## Lo que **no** entra en este spec
 
 - La pantalla «Acerca de» y su formulario de contacto.
-- Datos reales o en tiempo real en «ACTIVIDAD EN VIVO» y «TOP JUGADORES · HOY».
-- Cualquier forma de cobro detrás de la sección de precios.
+- ~~Datos reales o en tiempo real en «ACTIVIDAD EN VIVO» y «TOP JUGADORES · HOY».~~ Los datos reales llegaron el 2026-11-09 (ver Cambios posteriores); el tiempo real sigue fuera.
+- ~~Cualquier forma de cobro detrás de la sección de precios.~~ La sección se eliminó el 2026-11-09.
 - Los estilos GAMEPAD y sus variantes de tema.
 - Preguntas frecuentes desplegables.
 - Redirección de `/` a `/juegos`, `sitemap.ts` y `robots.txt`.
