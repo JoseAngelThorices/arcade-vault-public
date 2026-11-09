@@ -1,6 +1,6 @@
 # SPEC 15 — Perfil de jugador: página pública, alias único y avatar
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase · 13-supabase-auth · 14-security-rls-password-headers
 > **Fecha:** 2026-11-09
 > **Objetivo:** Dar a cada cuenta un perfil en una tabla `profiles` (alias único y
@@ -200,15 +200,15 @@ actual como reserva.
 
 - [x] `profiles` existe con RLS: lectura pública y ninguna escritura directa desde el cliente.
 - [x] La cuenta actual tiene perfil `NEO_PLAYER` y sus puntuaciones muestran ese alias.
-- [ ] Crear cuenta con un alias ya usado o fuera de `^[A-Z0-9_]{3,10}$` muestra error
+- [x] Crear cuenta con un alias ya usado o fuera de `^[A-Z0-9_]{3,10}$` muestra error
       inline y no llama a `signUp`.
 - [x] Una cuenta nueva aparece en `profiles` con el alias y el avatar elegidos.
 - [x] Si el trigger de alta recibe un alias ocupado (carrera), el registro no falla y
       el perfil queda como `PLAYER` + 4 dígitos.
-- [ ] El nav muestra el avatar elegido en escritorio y en el panel móvil.
-- [ ] Cambiar el alias en `/acceso` renombra todas las filas propias de `scores`, y el
+- [x] El nav muestra el avatar elegido en escritorio y en el panel móvil.
+- [x] Cambiar el alias en `/acceso` renombra todas las filas propias de `scores`, y el
       nav y los rankings muestran el alias nuevo.
-- [ ] Cambiar a un alias ocupado muestra "Ese alias ya está en uso." y no cambia nada.
+- [x] Cambiar a un alias ocupado muestra "Ese alias ya está en uso." y no cambia nada.
 - [x] Una puntuación guardada justo después de cambiar el alias se firma con el alias nuevo.
 - [x] `/jugador/NEO_PLAYER` y `/jugador/neo_player` muestran el mismo perfil.
 - [x] `/jugador/NOEXISTE` devuelve 404 con la página `not-found` propia.
