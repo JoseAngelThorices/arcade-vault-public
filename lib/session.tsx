@@ -191,7 +191,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     await createClient().auth.signOut();
-    // Los Server Components ya renderizados vuelven a pedirse sin sesion.
+    // Cualquier cambio de sesion vuelve al inicio; refresh vuelve a pedir los
+    // Server Components sin sesion.
+    router.push("/inicio");
     router.refresh();
   }, [router]);
 
