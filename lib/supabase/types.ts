@@ -13,6 +13,10 @@ export interface GameRow {
   cover: string;
   /** Variante de color del botón JUGAR. */
   color: "cyan" | "magenta" | "yellow" | "green";
+  /** Tope de puntuación que acepta `submit_score` (SEC-01). */
+  max_score: number;
+  /** Puntos por segundo máximos desde `start_run` que acepta `submit_score`. */
+  max_points_per_sec: number;
   created_at: string;
 }
 

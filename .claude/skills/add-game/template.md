@@ -52,8 +52,9 @@ Placeholders disponibles:
   con `getGame('{{ID}}')` de `lib/supabase/games.ts` y renderiza el reproductor.
 - Crear `components/{{ID}}-player.tsx` — reproductor `"use client"`: gestiona el estado
   ({{HUD_FIELDS}}, pausa, game over) y pasa callbacks al componente canvas.
-- Wiring del modal de game over: pre-rellenar nombre desde `localStorage.getItem('av_player_name')`;
-  al confirmar, guardar nombre en localStorage e insertar score en la tabla `scores` vía cliente browser.
+- Wiring del modal de game over: guardar solo con sesión, cerrando la partida del servidor con
+  `useScoreRun(game.id, gate)` de `lib/score-run.ts` (RPC `submit_score`, ver SEC-01 en
+  `references/security/informe-2026-11-09.md`); sin sesión, el modal invita a iniciar sesión.
 - Botón de pausa de la plataforma pasa el flag `paused` al componente canvas, que congela el game loop.
 - Eliminar el overlay "GAME OVER" del canvas — el modal React de la plataforma lo reemplaza.
 - El canvas deja de dibujar {{HUD_FIELDS}}; el HUD React de la plataforma es el único que
@@ -63,9 +64,8 @@ Placeholders disponibles:
 **Fuera de alcance:**
 
 - Crear las tablas `games` o `scores` en Supabase — ya existen (spec 06).
-- Supabase Auth — `user_id` se almacena como `null` en todos los scores.
-- Cambios de RLS — las políticas abiertas de SPEC 06 (SELECT en `games` y `scores`, INSERT en
-  `scores`) ya cubren el juego nuevo; endurecerlas es un spec futuro de seguridad.
+- Cambios de RLS o de RPC — `start_run`/`submit_score` ya cubren cualquier juego de `games`;
+  el cliente no puede insertar directamente en `scores`.
 - Realtime — el leaderboard no se actualiza en vivo; solo al cargar la página.
 - Paginación del leaderboard — se muestran los top {{TOP_N}} fijos.
 - Controles táctiles o mobile.
@@ -84,11 +84,14 @@ Placeholders disponibles:
 Ejecutar en el SQL Editor de Supabase:
 
 \`\`\`sql
-INSERT INTO games (id, title, short, long, cat, cover, color)
+-- max_score y max_points_per_sec: topes anti-trampas de submit_score (SEC-01). Holgados:
+-- varias veces la mejor partida posible y los puntos por segundo de una racha muy buena.
+INSERT INTO games (id, title, short, long, cat, cover, color, max_score, max_points_per_sec)
 VALUES (
 '{{ID}}', '{{TITLE}}', '{{SHORT}}',
 '{{LONG}}',
-'{{CAT}}', '{{COVER}}', '{{COLOR}}'
+'{{CAT}}', '{{COVER}}', '{{COLOR}}',
+{{MAX_SCORE}}, {{MAX_POINTS_PER_SEC}}
 );
 \`\`\`
 
@@ -137,14 +140,13 @@ de `lib/supabase/types.ts`.
      `generateMetadata` con el título, y renderiza `<{{COMPONENT_NAME}}Player game={game} />`.
    - `{{ID}}-player.tsx` es `"use client"` e importa `{{COMPONENT_NAME}}` con
      `dynamic(..., { ssr: false })` (solo se admite en Client Components).
-   - Estado local: `score`, {{HUD_STATE_VARS}}, `paused`, `over`, `name`, `saveStatus`, `run`.
-   - Al abrir el modal de game over, lee el nombre con `readPlayerName()` de `lib/player-name.ts`
-     y pre-rellena el campo `name`.
-   - Al confirmar, inserta en `scores` con `createClient()` de `lib/supabase/client.ts`:
-     `{ game_id: '{{ID}}', player_name: name, score, user_id: null }`. Si Supabase confirma,
-     persiste el nombre con `writePlayerName()` y registra la marca con `saveScore()` de `useSession()`.
-   - `saveStatus` (`idle` | `saving` | `saved` | `error`) deshabilita el botón mientras guarda y
-     después; si falla, muestra error y permite reintentar.
+   - Estado local: `score`, {{HUD_STATE_VARS}}, `paused`, `over`, `saveStatus`, `run`.
+   - `const scoreRun = useScoreRun(game.id, gate)` (tras `useCreditGate()`): abre la partida en el
+     servidor al montarse el canvas. Al confirmar, `await scoreRun.submit(score)`; si devuelve
+     `null`, registra la marca con `saveScore()` de `useSession()`. El alias lo pone el trigger.
+   - `saveStatus` (`idle` | `saving` | `saved` | `error` | `rejected`) deshabilita el botón mientras
+     guarda y después; `error` (red) permite reintentar, `rejected` (el servidor no acepta la
+     puntuación) no.
    - Reutiliza el mismo layout visual (HUD React + CRT + modal game over) que
      `app/jugar/asteroids/page.tsx` + `components/asteroids-player.tsx`.
      Verificación: el HUD React muestra los valores en tiempo real; tras una partida el score
@@ -210,9 +212,8 @@ de `lib/supabase/types.ts`.
 - **No: Crear tablas nuevas por juego** — se reutilizan `games` y `scores` del spec 06.
   Razón: el modelo es suficientemente genérico para cualquier juego con score numérico.
 
-- **No: Cambios de RLS en este spec** — se reutilizan las políticas abiertas de SPEC 06
-  (SELECT público en `games` y `scores`, INSERT público en `scores`).
-  Razón: se endurecen en el spec futuro de seguridad.
+- **No: Cambios de RLS en este spec** — se reutilizan `start_run`/`submit_score` (SEC-01).
+  Solo hay que elegir los topes `max_score` y `max_points_per_sec` de la fila del juego.
 
 - **No: Realtime en leaderboards** — los scores se ven al recargar.
   Razón: la complejidad de subscriptions no aporta valor mientras haya pocos jugadores activos.

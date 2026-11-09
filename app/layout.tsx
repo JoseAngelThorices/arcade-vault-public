@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { connection } from "next/server";
 import { Courier_Prime, JetBrains_Mono, Press_Start_2P } from "next/font/google";
 import Nav from "@/components/nav";
 import { CreditsProvider } from "@/lib/credits-client";
@@ -36,7 +37,10 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // La CSP de proxy.ts lleva un nonce por peticion, y una pagina prerenderizada
+  // no lo tendria en sus <script>: todas se renderizan por peticion (SEC-03).
+  await connection();
   return (
     <html
       lang="es"

@@ -99,6 +99,8 @@ export type GateStatus = "pending" | "ok" | "empty" | "error";
 
 export type CreditGate = {
   status: GateStatus;
+  /** Id de la partida en curso: cambia con cada newRun(). */
+  runId: string;
   /** Partida nueva (JUGAR DE NUEVO): otro runId, otro credito. */
   newRun: () => void;
   /** Reintenta el cobro del mismo runId tras un error de red. */
@@ -135,5 +137,5 @@ export function useCreditGate(): CreditGate {
   const newRun = useCallback(() => setRunId(newRunId()), []);
   const retry = useCallback(() => setAttempt((a) => a + 1), []);
 
-  return { status, newRun, retry };
+  return { status, runId, newRun, retry };
 }
