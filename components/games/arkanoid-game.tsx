@@ -12,6 +12,7 @@
 // dibujan pala, bola, ladrillos, escombros y textos a mano con su paleta.
 
 import { useEffect, useRef } from "react";
+import { playSample, preloadSample } from "@/lib/audio";
 import type { Skin } from "@/lib/skins";
 
 interface ArkanoidGameProps {
@@ -296,14 +297,16 @@ function startGame(
 
   // ── Assets ──────────────────────────────────────────────────────────────────
   let sheet: HTMLImageElement | null = null;
+  // Los MP3 pasan por lib/audio (SPEC 16): respetan el silencio global.
   const sounds = {
-    bounce: new Audio(`${ASSETS}/ball-bounce.mp3`),
-    break: new Audio(`${ASSETS}/break-sound.mp3`),
+    bounce: `${ASSETS}/ball-bounce.mp3`,
+    break: `${ASSETS}/break-sound.mp3`,
   };
+  preloadSample(sounds.bounce);
+  preloadSample(sounds.break);
 
-  function playSound(audio: HTMLAudioElement) {
-    const s = audio.cloneNode() as HTMLAudioElement;
-    s.play().catch(() => {});
+  function playSound(url: string) {
+    playSample(url);
   }
 
   function drawFrame(frame: Frame, x: number, y: number, w: number, h: number) {

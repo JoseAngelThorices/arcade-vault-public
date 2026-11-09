@@ -44,7 +44,10 @@ Todos los reproductores reciben del motor callbacks de estado:
   - Muestran el botón de silencio en el HUD (escritorio) y bajo el gamepad (móvil).
   - Atajo de teclado `M` para silenciar.
 - `components/games/arkanoid-game.tsx`: sus dos MP3 pasan por `lib/audio.ts`, así que
-  respetan el silencio y el volumen. Es el único motor que se toca.
+  respetan el silencio y el volumen.
+- Motores de Asteroids, Tetris y Frogger (ampliación, ver `Decisiones`): llaman a
+  `playSfx` en sus propios eventos (disparo, explosiones, motor del cohete, mover,
+  girar, caídas, saltos, chapuzones, atropellos…).
 - `app/globals.css`: estilos del botón.
 - `CLAUDE.md`: el patrón de sonido para juegos futuros.
 
@@ -52,9 +55,8 @@ Todos los reproductores reciben del motor callbacks de estado:
 
 - Música de fondo.
 - Control de volumen con deslizador (solo hay encendido y apagado).
-- Sonidos dentro de los motores para eventos que no llegan por callback (rotar en
-  Tetris, disparo en Asteroids, salto en Frogger). Necesitarían callbacks nuevos en
-  cada motor: va en otro spec si se quiere.
+- Sonidos propios en los motores de Snake y Arkanoid más allá de los actuales (girar
+  la serpiente, rebote en la pala con efecto sintetizado…).
 - Ficheros de audio nuevos.
 - Sonido en páginas que no son juegos (navegación, botones del menú).
 - Un agente `@sound-designer`: se decide cuando haya un juego nuevo que lo necesite.
@@ -77,7 +79,7 @@ export type Sfx =
 ```
 
 Cada efecto es una receta de oscilador: forma de onda, frecuencias, duración y
-envolvente. Todas duran menos de 600 ms.
+envolvente. Ninguna pasa de 700 ms.
 
 API pública:
 
@@ -116,6 +118,35 @@ Las bajadas (reinicio a 0) no suenan.
 
 Tetris no tiene sonido de puntuación porque la bajada rápida suma puntos en cada fila
 y sería ruido. Arkanoid ya tiene sus MP3 de rebote y rotura.
+
+> **Actualizado en la implementación:** en Asteroids, Tetris y Frogger la tabla
+> anterior queda solo con `levelup`, `pause` y `gameover` en el reproductor. Sus
+> puntos, vidas y líneas los suena el motor con efectos propios (tabla siguiente).
+
+### Efectos de los motores (ampliación)
+
+| Juego | Evento | Efecto |
+|---|---|---|
+| Asteroids | Disparo | `laser` |
+| Asteroids | Roca grande / mediana / pequeña destruida | `explodeL` / `explodeM` / `explodeS` |
+| Asteroids | Nave destruida | `shipExplode` |
+| Asteroids | El escudo absorbe un choque | `shield` |
+| Asteroids | Recoger power-up | `powerup` |
+| Asteroids | Acelerar (mientras se mantiene ↑) | bucle `thrust` (ruido grave con temblor) |
+| Tetris | Mover a un lado | `move` (o `bump` contra el borde) |
+| Tetris | Girar | `rotate` (o `bump` si no cabe) |
+| Tetris | Bajada suave | `soft` por fila |
+| Tetris | Caída rápida | `harddrop` |
+| Tetris | Encajar sin línea | `lock` |
+| Tetris | 1–3 líneas / 4 líneas | `line` / `tetris` |
+| Frogger | Salto | `hop` |
+| Frogger | Ahogarse o caer al agua | `splash`: "plop", chapoteo, salpicadura y tres burbujas que suben |
+| Frogger | Atropello | `squash`: choque (golpe seco, chapa metálica y cristales) |
+| Frogger | Llegar a un nenúfar | `home` |
+
+Los efectos de explosión, golpe y agua usan ruido blanco filtrado (`BiquadFilter`
+con barrido), además de osciladores. `setLoop(loop, on)` enciende y apaga sonidos
+continuos; es idempotente y se llama en cada frame.
 
 ---
 
@@ -174,6 +205,27 @@ y sería ruido. Arkanoid ya tiene sus MP3 de rebote y rotura.
 - **Sí: tecla `M`.** Ninguno de los cinco juegos la usa (comprobar en el paso 3 contra
   el `KEY_MAP` de cada reproductor).
 - **No: deslizador de volumen.** Encendido y apagado bastan por ahora.
+
+### Desviaciones durante la implementación
+
+- **`useSoundOn(valor, efecto, dirección, activo)` en lugar de `useRiseSound(sfx)`.**
+  El hook observa el estado que el reproductor ya guarda (puntuación, vidas, nivel…)
+  y suena al cambiar en la dirección indicada. Así no hay que envolver cada callback
+  del motor y el primer render nunca suena. Con la partida terminada (`over`) no suena
+  nada salvo `gameover`.
+- **`preloadSample(url)`** en `lib/audio.ts`: Arkanoid descarga sus MP3 al montar si
+  el contexto ya existe, para que el primer rebote no llegue tarde.
+- **El pie del CRT anuncia `M SONIDO`** junto a los controles de cada juego.
+- **La tecla `M` está libre** en los cinco juegos: ningún `KEY_MAP` ni motor la usa.
+- **Ampliación pedida al probarlo: sonidos en los motores.** El usuario pidió más
+  sonidos y más realismo en Asteroids (motor del cohete y disparo), Frogger (salto) y
+  Tetris (giro de piezas y demás). Se amplía este spec en lugar de abrir otro porque
+  la rama aún no estaba integrada. Los motores llaman directamente a `playSfx` /
+  `setLoop` de `lib/audio.ts` (como Arkanoid con `playSample`), sin callbacks nuevos.
+- **Ruido filtrado además de osciladores** para explosiones, golpes y agua: con solo
+  tonos sonaban demasiado "pitido".
+- **En esos tres juegos el reproductor deja de sonar puntos, vidas y líneas** para no
+  duplicar lo que ya suena el motor.
 
 ---
 

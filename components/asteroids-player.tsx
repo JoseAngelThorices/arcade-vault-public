@@ -18,6 +18,8 @@ import { useSession } from "@/lib/session";
 import { useSkin } from "@/lib/skins";
 import SkinPicker from "@/components/skin-picker";
 import MobileGamepad, { type KeyMap } from "@/components/mobile-gamepad";
+import SoundToggle from "@/components/sound-toggle";
+import { useGameAudio, useSoundOn } from "@/lib/use-sound";
 import { createClient } from "@/lib/supabase/client";
 import type { GameRow } from "@/lib/supabase/types";
 
@@ -37,6 +39,14 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
   const [level, setLevel] = useState(1);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
+
+  // Sonido (SPEC 16): efectos al cambiar el estado que notifica el motor.
+  // Las bajadas por reinicio no suenan (ver la tabla de eventos del spec).
+  useGameAudio();
+  // Disparo, explosiones, escudo, power-ups y el motor del cohete los suena el motor del juego.
+  useSoundOn(level, "levelup", "up", !over);
+  useSoundOn(paused, "pause", "change", !over);
+  useSoundOn(over, "gameover", "up");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   // Cambiarla remonta el canvas: partida nueva desde cero.
   const [run, setRun] = useState(0);
@@ -106,6 +116,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
           <button className="btn magenta" onClick={openGameOver} disabled={over}>
             FIN
           </button>
+          <SoundToggle />
           <Link className="btn ghost" href={`/juego/${game.id}`}>
             SALIR
           </Link>
@@ -138,7 +149,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
         <div className="crt-bottom">
           <span className="led">SEÑAL OK</span>
           <span>{game.title} · CRT-83 · 60 HZ</span>
-          <span>← ↑ ↓ → MOVER · ESPACIO DISPARAR</span>
+          <span>← ↑ ↓ → MOVER · ESPACIO DISPARAR · M SONIDO</span>
         </div>
       </div>
 
@@ -151,6 +162,11 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
         skin={skin}
         onSkinChange={setSkin}
       />
+
+      {/* El HUD se oculta en móvil: el silencio vive bajo el gamepad (SPEC 16). */}
+      <div className="sound-mobile md:hidden">
+        <SoundToggle />
+      </div>
 
       {over && (
         <div className="modal-bd">

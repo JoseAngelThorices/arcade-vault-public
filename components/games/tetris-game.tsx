@@ -8,6 +8,7 @@
 // pintarse, y no hay records, menus ni overlays: los pone la plataforma.
 
 import { useEffect, useRef } from "react";
+import { playSfx } from "@/lib/audio";
 import type { Skin } from "@/lib/skins";
 
 interface TetrisGameProps {
@@ -203,15 +204,27 @@ function startGame(
     return result;
   }
 
-  function tryRotate() {
+  /** true si la pieza ha podido girar (con o sin desplazamiento lateral). */
+  function tryRotate(): boolean {
     const rotated = rotateCW(current.shape);
     for (const kick of [0, -1, 1, -2, 2]) {
       if (!collide(rotated, current.x + kick, current.y)) {
         current.shape = rotated;
         current.x += kick;
-        return;
+        return true;
       }
     }
+    return false;
+  }
+
+  /** Mueve la pieza en horizontal; suena el paso o el golpe contra el borde (SPEC 16). */
+  function shift(dx: number) {
+    if (collide(current.shape, current.x + dx, current.y)) {
+      playSfx("bump");
+      return;
+    }
+    current.x += dx;
+    playSfx("move");
   }
 
   function merge() {
@@ -220,7 +233,8 @@ function startGame(
         if (current.shape[r][c]) board[current.y + r][current.x + c] = current.shape[r][c];
   }
 
-  function clearLines() {
+  /** Borra las líneas completas y devuelve cuántas eran. */
+  function clearLines(): number {
     let cleared = 0;
     for (let r = ROWS - 1; r >= 0; r--) {
       if (board[r].every((v) => v !== 0)) {
@@ -236,6 +250,7 @@ function startGame(
       level = Math.floor(lines / 10) + 1;
       dropInterval = intervalForLevel(level);
     }
+    return cleared;
   }
 
   function ghostY() {
@@ -248,21 +263,27 @@ function startGame(
     const gy = ghostY();
     score += (gy - current.y) * 2;
     current.y = gy;
-    lockPiece();
+    playSfx("harddrop");
+    lockPiece(false);
   }
 
   function softDrop() {
     if (!collide(current.shape, current.x, current.y + 1)) {
       current.y++;
       score += 1;
+      playSfx("soft");
     } else {
       lockPiece();
     }
   }
 
-  function lockPiece() {
+  /** Fija la pieza. Suena el tetris, la línea o el golpe de encaje (la caída rápida ya trae el suyo). */
+  function lockPiece(thud = true) {
     merge();
-    clearLines();
+    const cleared = clearLines();
+    if (cleared === 4) playSfx("tetris");
+    else if (cleared > 0) playSfx("line");
+    else if (thud) playSfx("lock");
     spawn();
   }
 
@@ -436,17 +457,17 @@ function startGame(
     if (pausedRef.current) return;
     switch (e.code) {
       case "ArrowLeft":
-        if (!collide(current.shape, current.x - 1, current.y)) current.x--;
+        shift(-1);
         break;
       case "ArrowRight":
-        if (!collide(current.shape, current.x + 1, current.y)) current.x++;
+        shift(1);
         break;
       case "ArrowDown":
         softDrop();
         break;
       case "ArrowUp":
       case "KeyX":
-        tryRotate();
+        playSfx(tryRotate() ? "rotate" : "bump");
         break;
       case "Space":
         hardDrop();

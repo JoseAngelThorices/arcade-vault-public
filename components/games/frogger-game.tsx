@@ -11,6 +11,7 @@
 // La skin (NEON, RETRO o CLASICO) llega por prop y se lee en cada frame.
 
 import { useEffect, useRef } from "react";
+import { playSfx, type Sfx } from "@/lib/audio";
 import type { Skin } from "@/lib/skins";
 
 interface FroggerGameProps {
@@ -325,7 +326,9 @@ function startGame(
     resetLife();
   }
 
-  function onDeath() {
+  /** Muerte con su sonido (SPEC 16): agua o atropello. */
+  function onDeath(sfx: Sfx) {
+    playSfx(sfx);
     state.lives -= 1;
     if (state.lives > 0) {
       resetLife();
@@ -377,17 +380,19 @@ function startGame(
     frog.col = col;
     frog.facing = dir;
     frog.ridingEntity = null;
+    playSfx("hop");
 
     // Resultado segun la fila destino.
     if (row === HOME_ROW) {
       const slot = state.homeSlots.find((s) => col >= s.col && col < s.col + s.widthCells);
       if (!slot || slot.filled) {
-        onDeath(); // agua de la meta o nenufar ya ocupado
+        onDeath("splash"); // agua de la meta o nenufar ya ocupado
         return;
       }
       addProgress(row);
       slot.filled = true;
       state.score += POINTS_PER_HOME;
+      playSfx("home");
       if (state.homeSlots.every((s) => s.filled)) {
         state.score += POINTS_PER_ROUND;
         resetRound();
@@ -400,11 +405,11 @@ function startGame(
     if (isRiver(row)) {
       frog.ridingEntity = supportAt(row, col);
       if (!frog.ridingEntity) {
-        onDeath(); // se ahoga
+        onDeath("splash"); // se ahoga
         return;
       }
     } else if (isRoad(row) && hitByVehicle(row, col)) {
-      onDeath();
+      onDeath("squash");
       return;
     }
 
@@ -436,17 +441,17 @@ function startGame(
     const support = supportAt(frog.row, frog.col);
     frog.ridingEntity = support;
     if (!support) {
-      onDeath();
+      onDeath("splash");
       return;
     }
     const lane = laneAt(frog.row)!;
     frog.col += (lane.dir * lane.baseSpeed * state.speedMult * dt) / CELL;
-    if (frog.col < 0 || frog.col > COLS - 1) onDeath(); // arrastrado fuera del tablero
+    if (frog.col < 0 || frog.col > COLS - 1) onDeath("splash"); // arrastrado fuera del tablero
   }
 
   function checkRoadCollision() {
     const frog = state.frog;
-    if (isRoad(frog.row) && hitByVehicle(frog.row, frog.col)) onDeath();
+    if (isRoad(frog.row) && hitByVehicle(frog.row, frog.col)) onDeath("squash");
   }
 
   // ── Dibujo ──────────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@
 // La skin (SPEC 10) tambien llega por prop y se lee en cada frame.
 
 import { useEffect, useRef } from "react";
+import { playSfx, setLoop, type Sfx } from "@/lib/audio";
 import type { Skin } from "@/lib/skins";
 
 interface AsteroidsGameProps {
@@ -728,6 +729,9 @@ function startGame(
     spawnAsteroids(3 + level);
   }
 
+  // Explosión de roca según su tamaño (SPEC 16): cuanto más grande, más grave.
+  const EXPLODE_SFX: Record<number, Sfx> = { 3: "explodeL", 2: "explodeM", 1: "explodeS" };
+
   function explode(x: number, y: number, count = 8) {
     for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
   }
@@ -739,6 +743,7 @@ function startGame(
 
   function killShip() {
     explode(ship.x, ship.y, 14);
+    playSfx("shipExplode");
     clearEffects(); // morir corta los efectos activos
     ship.dead = true;
     lives--;
@@ -777,7 +782,9 @@ function startGame(
 
     // Disparar
     if (pressed("Space")) {
-      bullets.push(...ship.tryShoot());
+      const shots = ship.tryShoot();
+      if (shots.length > 0) playSfx("laser");
+      bullets.push(...shots);
     }
 
     // Contadores de los efectos temporales
@@ -803,6 +810,7 @@ function startGame(
           a.dead = true;
           score += POINTS[a.size];
           explode(a.x, a.y, a.size * 5);
+          playSfx(EXPLODE_SFX[a.size] ?? "explodeS");
           newAsteroids.push(...a.split());
           // Suelta como mucho un power-up por destrucción, en el orden barajado
           // de la ronda. La probabilidad crece según se agotan las destrucciones
@@ -823,6 +831,7 @@ function startGame(
       if (!ship.dead && dist(ship, p) < ship.radius + p.radius) {
         p.dead = true;
         applyPowerUp(p.type);
+        playSfx("powerup");
       }
     }
     powerups = powerups.filter((p) => !p.dead);
@@ -837,6 +846,7 @@ function startGame(
             // nave queda invulnerable un instante para poder salir de ahí.
             effects.shield = 0;
             a.dead = true;
+            playSfx("shield");
             score += POINTS[a.size];
             explode(a.x, a.y, a.size * 5);
             ship.invincible = 1.2;
@@ -954,6 +964,8 @@ function startGame(
       notify();
       draw();
     }
+    // Motor del cohete: suena mientras se acelera con la nave viva y sin pausa.
+    setLoop("thrust", !pausedRef.current && state === "playing" && !ship.dead && ship.thrusting);
     // Con la partida terminada el canvas ya no cambia: se para el bucle
     if (state !== "gameover") frame = requestAnimationFrame(loop);
   }
@@ -963,6 +975,7 @@ function startGame(
 
   return () => {
     cancelAnimationFrame(frame);
+    setLoop("thrust", false);
     window.removeEventListener("keydown", onKeyDown);
     window.removeEventListener("keyup", onKeyUp);
   };

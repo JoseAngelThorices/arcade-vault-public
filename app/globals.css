@@ -867,6 +867,11 @@
   .hud-stat.level .v { color: var(--yellow); text-shadow: 0 0 6px rgba(245,255,0,0.5); }
   .hud-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 
+  /* Botón de silencio (SPEC 16): cian con sonido, apagado en gris. */
+  .sound-toggle { white-space: nowrap; }
+  .sound-toggle.is-muted { color: var(--ink-faint); border-color: var(--line-2); text-shadow: none; box-shadow: none; }
+  .sound-mobile { display: flex; justify-content: center; margin-top: 12px; }
+
   /* Selector de skin del reproductor: un desplegable que ocupa un hueco mas
      del HUD, bajo su etiqueta "SKIN" como las demas estadisticas. */
   .skin-select {
