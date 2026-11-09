@@ -1,6 +1,6 @@
 # SPEC 16 — Sonido unificado en los juegos
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 05-asteroids-game · 07-tetris-game · 08-arkanoid-game · 09-snake-game · 10-mobile-touch-controls · 12-frogger-game
 > **Fecha:** 2026-11-09
 > **Objetivo:** Dar efectos de sonido sintetizados a los cinco juegos con un módulo
@@ -184,7 +184,7 @@ continuos; es idempotente y se llama en cada frame.
 - [ ] Con `localStorage` bloqueado, el silencio funciona durante la visita sin errores.
 - [ ] No hay desajustes de hidratación en la consola al cargar un reproductor.
 - [ ] Ningún efecto se reproduce más de una vez en 60 ms.
-- [ ] Lint, tipos y build sin errores.
+- [x] Lint, tipos y build sin errores.
 
 ---
 
