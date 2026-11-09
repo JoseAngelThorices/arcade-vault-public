@@ -9,6 +9,8 @@
 //                     ajena ni reciba una respuesta distinta de la de un humano.
 //   3. Limite por IP   antes de validar, porque validar ya es trabajo.
 //   4. Validacion     la que manda: el endpoint es publico.
+//   5. Limite global  tope de envios de todas las IP (SEC-02), solo para
+//                     mensajes validos.
 
 import { Resend } from "resend";
 
@@ -31,6 +33,14 @@ const ENVIO_FALLIDO = "No hemos podido enviar el mensaje. Escríbenos directamen
 const RATE_LIMIT = 3;
 /** Ventana del limite, en milisegundos. */
 const RATE_WINDOW_MS = 10 * 60 * 1000;
+/**
+ * Envios permitidos en total, de todas las IP, dentro de la ventana global.
+ * Acota la cuota de Resend aunque alguien consiga rotar de IP (SEC-02).
+ */
+const GLOBAL_LIMIT = 20;
+const GLOBAL_WINDOW_MS = 60 * 60 * 1000;
+/** Clave del contador global dentro de `hits`: no puede chocar con una IP. */
+const GLOBAL_KEY = "*";
 
 /**
  * Marcas de tiempo de los envios aceptados, por IP.
@@ -51,11 +61,24 @@ function fail(status: number, error: ContactError["error"], message: string, fie
   });
 }
 
-/** Primer valor de x-forwarded-for, o "desconocida" si no viene la cabecera. */
+/**
+ * IP del visitante sin fiarse de lo que mande el cliente (SEC-02).
+ *
+ * `x-forwarded-for` la puede escribir cualquiera; solo son fiables las
+ * entradas que anaden los proxies propios, que van al final de la lista. Con
+ * TRUSTED_PROXY_HOPS=N (N proxies delante de la app, p. ej. 1 con un nginx) se
+ * toma la entrada N contando desde el final. Sin proxies (0 o sin definir) no
+ * hay forma de saber la IP y todas las peticiones comparten contador: el limite
+ * pasa a ser global, que es lo seguro.
+ */
 function clientIp(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const first = forwarded?.split(",")[0]?.trim();
-  return first && first.length > 0 ? first : "desconocida";
+  const hops = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "0", 10);
+  if (!Number.isInteger(hops) || hops < 1) return "desconocida";
+  const chain = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((ip) => ip.trim())
+    .filter(Boolean);
+  return chain[chain.length - hops] ?? "desconocida";
 }
 
 /**
@@ -79,11 +102,29 @@ function rateLimited(ip: string): boolean {
   return false;
 }
 
+/**
+ * Igual que rateLimited(), pero para el total de envios de todas las IP. Se
+ * consulta despues de validar: un cuerpo invalido no gasta cuota global, asi
+ * que no sirve para bloquear el formulario a los demas sin mandar mensajes.
+ */
+function globalLimited(): boolean {
+  const now = Date.now();
+  const recent = (hits.get(GLOBAL_KEY) ?? []).filter((t) => now - t < GLOBAL_WINDOW_MS);
+  if (recent.length >= GLOBAL_LIMIT) {
+    hits.set(GLOBAL_KEY, recent);
+    return true;
+  }
+  recent.push(now);
+  hits.set(GLOBAL_KEY, recent);
+  return false;
+}
+
 /** Purga las IP sin marcas vivas. Se llama en cada peticion: el Map es pequeno. */
 function sweep(): void {
   const now = Date.now();
   for (const [ip, times] of hits) {
-    const recent = times.filter((t) => now - t < RATE_WINDOW_MS);
+    const window = ip === GLOBAL_KEY ? GLOBAL_WINDOW_MS : RATE_WINDOW_MS;
+    const recent = times.filter((t) => now - t < window);
     if (recent.length === 0) hits.delete(ip);
     else hits.set(ip, recent);
   }
@@ -128,6 +169,11 @@ export async function POST(request: Request): Promise<Response> {
   if (!validation.ok) {
     console.warn(`[contacto] Validacion fallida en el servidor: ${validation.fields.join(", ")}`);
     return fail(400, "validacion", "Revisa los campos marcados.", validation.fields);
+  }
+
+  if (globalLimited()) {
+    console.warn(`[contacto] Limite global alcanzado: ${GLOBAL_LIMIT} envios en ${GLOBAL_WINDOW_MS / 60000} min.`);
+    return fail(429, "limite", "Ahora mismo recibimos demasiados mensajes. Prueba dentro de un rato.");
   }
 
   const payload = validation.value;

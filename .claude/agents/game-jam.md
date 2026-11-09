@@ -105,7 +105,7 @@ Diferencia con `/add-game`: ese skill escribe un único spec `specs/NN-<id>-game
      - Nueva fila en `references/implemented-games.md` con los mismos datos que la fila de `games`.
    - **Un solo HUD, el de React.** El canvas no dibuja puntuación, vidas ni nivel, ni overlays de GAME OVER o PAUSA; informa mediante callbacks (criterio de SPEC 05). Solo puede dibujar avisos sin equivalente en el HUD (p. ej. "Pulsa una dirección").
    - **Pausa:** las teclas `P` y `Escape` llaman a `onPauseToggle`; el botón PAUSA de la plataforma pasa `paused`, y el motor congela el bucle mientras sea `true`.
-   - **Modal de fin de partida:** pre-rellena el nombre con `readPlayerName()` de `lib/player-name.ts`; al confirmar inserta `{ game_id: "<id>", player_name, score, user_id: null }` en `scores` con el cliente de `lib/supabase/client.ts`, persiste el nombre con `writePlayerName()` y llama a `saveScore` de `useSession()` para el registro local.
+   - **Modal de fin de partida:** guardar solo con sesión, con `useScoreRun(game.id, gate)` de `lib/score-run.ts` (`submit(score)` cierra la partida abierta en el servidor; RPC `submit_score`, SEC-01) y `saveScore` de `useSession()` para el registro local. El cliente nunca inserta en `scores`. La fila de `games` del spec incluye `max_score` y `max_points_per_sec`.
    - Textos de la interfaz en español; números con `toLocaleString("es-ES")`.
 
 6. **Contenido del spec secundario (`02-…`)**: no duplica el core. Aporta alcance nuevo y delimitado. Ejemplos válidos:

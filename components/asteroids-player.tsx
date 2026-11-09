@@ -22,7 +22,7 @@ import SoundToggle from "@/components/sound-toggle";
 import { CreditGateOverlay, CreditsLeft, NoCreditsModal } from "@/components/credit-gate";
 import { useCreditGate } from "@/lib/credits-client";
 import { useGameAudio, useSoundOn } from "@/lib/use-sound";
-import { createClient } from "@/lib/supabase/client";
+import { useScoreRun } from "@/lib/score-run";
 import type { GameRow } from "@/lib/supabase/types";
 
 const AsteroidsGame = dynamic(() => import("@/components/games/asteroids-game"), {
@@ -32,12 +32,14 @@ const AsteroidsGame = dynamic(() => import("@/components/games/asteroids-game"),
 // Teclas del motor para cada boton del gamepad; B no tiene accion en Asteroids.
 const KEY_MAP: KeyMap = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight", a: "Space" };
 
-type SaveStatus = "idle" | "saving" | "saved" | "error";
+type SaveStatus = "idle" | "saving" | "saved" | "error" | "rejected";
 
 export default function AsteroidsPlayer({ game }: { game: GameRow }) {
   const { user, username, ready, saveScore } = useSession();
   // Creditos (SPEC 02): el canvas solo se monta con la partida cobrada.
   const gate = useCreditGate();
+  // Partida abierta en el servidor: sin ella no se puede guardar (SEC-01).
+  const scoreRun = useScoreRun(game.id, gate);
   const playing = gate.status === "ok";
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -59,7 +61,7 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
   const [skin, setSkin] = useSkin();
 
   const playerName = ready && username ? username : "INVITADO";
-  const locked = saveStatus === "saving" || saveStatus === "saved";
+  const locked = saveStatus === "saving" || saveStatus === "saved" || saveStatus === "rejected";
 
   const openGameOver = () => setOver(true);
 
@@ -68,12 +70,10 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
     if (!user || !username || locked) return;
     setSaveStatus("saving");
 
-    const { error } = await createClient()
-      .from("scores")
-      .insert({ game_id: game.id, player_name: username, score, user_id: user.id });
-
-    if (error) {
-      setSaveStatus("error");
+    // El servidor valida la partida, el tope del juego y el ritmo de puntos.
+    const failure = await scoreRun.submit(score);
+    if (failure) {
+      setSaveStatus(failure === "rejected" ? "rejected" : "error");
       return;
     }
     // Registro local de la sesion: alimenta "TU MEJOR MARCA" del Salón.
@@ -203,6 +203,11 @@ export default function AsteroidsPlayer({ game }: { game: GameRow }) {
                 {saveStatus === "error" && (
                   <p className="save-error" role="alert">
                     No se pudo guardar la puntuación. Comprueba tu conexión y vuelve a intentarlo.
+                  </p>
+                )}
+                {saveStatus === "rejected" && (
+                  <p className="save-error" role="alert">
+                    El servidor no ha aceptado esta puntuación.
                   </p>
                 )}
               </>

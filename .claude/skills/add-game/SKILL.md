@@ -71,6 +71,7 @@ Haz preguntas en bloques de 3-5. Espera respuesta antes de avanzar al siguiente 
 5. **cat** — `ARCADE`, `PUZZLE` o `SHOOTER`. Propón el más obvio.
 6. **cover** — clase CSS (ej. `cover-rocas`). Leer `app/globals.css` para ver las disponibles y proponer la más adecuada. Si no hay ninguna apropiada, indicar que habrá que añadir una nueva al CSS (fuera del alcance de este spec).
 7. **color** — `cyan`, `magenta`, `yellow` o `green`. Propón basándote en la estética del juego.
+8. **max_score** y **max_points_per_sec** — topes anti-trampas de `submit_score` (SEC-01): `submit_score` rechaza puntuaciones por encima de `max_score` o de `max_points_per_sec` × segundos desde que empezó la partida. Propón valores holgados a partir de la tabla de puntos del juego (varias veces la mejor partida realista; los puntos por segundo de una racha muy buena). Referencia: Snake 100 000 / 100, Asteroids 1 000 000 / 400, Tetris 3 000 000 / 1 500.
 
 ### Bloque B — Mecánica
 

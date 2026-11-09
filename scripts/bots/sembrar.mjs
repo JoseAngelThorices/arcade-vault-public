@@ -1,8 +1,10 @@
 // Rellena `scores` con partidas simuladas de los bots, rapido y sin navegador.
-// Cada bot inicia sesion con la clave publica e inserta sus filas como lo hace
-// el reproductor (RLS + trigger de alias), con puntuaciones aleatorias segun su
-// habilidad y el juego. Despues prueba que la base de datos rechaza lo que debe
-// rechazar (SPEC 14) y sale con codigo 1 si algo falla.
+// Las filas se insertan con la clave secreta (el cliente ya no puede insertar
+// en `scores`: solo cerrando una partida con submit_score, SEC-01), con el
+// user_id de cada bot y puntuaciones aleatorias segun su habilidad y el juego;
+// el trigger pone el alias. Despues cada bot inicia sesion con la clave publica
+// y se prueba que la base de datos rechaza lo que debe rechazar (SPEC 14 y
+// SEC-01). Sale con codigo 1 si algo falla.
 //
 //   npm run bots:sembrar -- --partidas=10 [--bots=5] [--sin-comprobaciones]
 
@@ -56,7 +58,7 @@ const sessions = await pool(bots, 5, async (bot) => {
       const game_id = favs[Math.floor(Math.random() * favs.length)];
       return { game_id, player_name: "BOT", score: randomScore(game_id, skill), user_id: session.user.id };
     });
-    const { error } = await session.client.from("scores").insert(rows);
+    const { error } = await admin.from("scores").insert(rows);
     if (error) problems.push(`${bot.email}: insercion rechazada (${error.message})`);
     else inserted += rows.length;
     return session;
@@ -85,42 +87,56 @@ if (!args["sin-comprobaciones"] && live.length >= 2) {
   const [a, b] = live;
   const { data: profA } = await admin.from("profiles").select("username").eq("id", a.user.id).single();
 
-  await check("El alias lo pone el trigger, no el cliente", async () => {
-    const { data, error } = await a.client
-      .from("scores")
-      .insert({ game_id: "snake", player_name: "HACKER", score: 10, user_id: a.user.id })
-      .select("player_name")
-      .single();
-    if (error) return `insercion rechazada: ${error.message}`;
-    return data.player_name === profA.username || `se guardo como ${data.player_name}`;
-  });
+  const rpcCode = (error) => error?.message ?? "aceptado";
 
-  await check("No se puede guardar a nombre de otro usuario", async () => {
+  await check("El cliente no puede insertar directamente en scores", async () => {
     const { error } = await a.client
       .from("scores")
-      .insert({ game_id: "snake", player_name: "X", score: 10, user_id: b.user.id });
-    return !!error || "se acepto una fila con el user_id de otro bot";
+      .insert({ game_id: "snake", player_name: "HACKER", score: 10, user_id: a.user.id });
+    return !!error || "se acepto un INSERT directo";
   });
 
   await check("Sin sesion no se puede guardar", async () => {
     const { error } = await anonClient()
       .from("scores")
       .insert({ game_id: "snake", player_name: "ANON", score: 10, user_id: null });
-    return !!error || "anon pudo insertar";
+    const { error: rpcError } = await anonClient().rpc("start_run", { p_game: "snake" });
+    return (!!error && !!rpcError) || "anon pudo insertar o abrir partida";
   });
 
-  await check("Puntuacion negativa rechazada", async () => {
-    const { error } = await a.client
-      .from("scores")
-      .insert({ game_id: "snake", player_name: "X", score: -50, user_id: a.user.id });
-    return !!error || "se acepto score < 0";
+  await check("start_run rechaza un juego inexistente", async () => {
+    const { error } = await a.client.rpc("start_run", { p_game: "no-existe" });
+    return /game_invalid/.test(rpcCode(error)) || `respuesta: ${rpcCode(error)}`;
   });
 
-  await check("Juego inexistente rechazado", async () => {
-    const { error } = await a.client
-      .from("scores")
-      .insert({ game_id: "no-existe", player_name: "X", score: 10, user_id: a.user.id });
-    return !!error || "se acepto un game_id que no esta en games";
+  await check("submit_score rechaza una puntuacion imposible", async () => {
+    const { data: run } = await a.client.rpc("start_run", { p_game: "snake" });
+    const { error } = await a.client.rpc("submit_score", { p_run: run, p_score: 999999999 });
+    return /score_rejected/.test(rpcCode(error)) || `respuesta: ${rpcCode(error)}`;
+  });
+
+  await check("submit_score rechaza puntuacion negativa", async () => {
+    const { data: run } = await a.client.rpc("start_run", { p_game: "snake" });
+    const { error } = await a.client.rpc("submit_score", { p_run: run, p_score: -50 });
+    return /score_rejected/.test(rpcCode(error)) || `respuesta: ${rpcCode(error)}`;
+  });
+
+  await check("Una partida solo admite una puntuacion, con el alias del trigger", async () => {
+    const { data: run } = await a.client.rpc("start_run", { p_game: "snake" });
+    const first = await a.client.rpc("submit_score", { p_run: run, p_score: 0 });
+    if (first.error) return `primer envio rechazado: ${first.error.message}`;
+    const second = await a.client.rpc("submit_score", { p_run: run, p_score: 0 });
+    if (!/run_used/.test(rpcCode(second.error))) return `segundo envio: ${rpcCode(second.error)}`;
+    const { data } = await admin
+      .from("scores").select("player_name").eq("user_id", a.user.id)
+      .order("created_at", { ascending: false }).limit(1).single();
+    return data?.player_name === profA.username || `se guardo como ${data?.player_name}`;
+  });
+
+  await check("No se puede cerrar la partida de otro usuario", async () => {
+    const { data: run } = await b.client.rpc("start_run", { p_game: "snake" });
+    const { error } = await a.client.rpc("submit_score", { p_run: run, p_score: 0 });
+    return /run_invalid/.test(rpcCode(error)) || `respuesta: ${rpcCode(error)}`;
   });
 
   await check("No se pueden editar puntuaciones propias", async () => {
