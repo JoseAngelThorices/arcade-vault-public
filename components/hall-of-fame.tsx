@@ -7,6 +7,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import LeaderboardEmpty from "@/components/leaderboard-empty";
+import PlayerLink from "@/components/player-link";
 import { formatScoreDate } from "@/lib/format";
 import { useSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
@@ -32,7 +33,7 @@ function PodiumSlot({ row, rank }: { row: ScoreRow | undefined; rank: 1 | 2 | 3 
     <div className={"podium-slot " + medal}>
       {rank === 1 && <div className="crown">CAMPEÓN</div>}
       <div className="rank-num">{String(rank).padStart(2, "0")}</div>
-      <div className="name">{row?.player_name ?? "???"}</div>
+      <div className="name">{row ? <PlayerLink row={row} /> : "???"}</div>
       <div className="score">{row ? row.score.toLocaleString("es-ES") : "—"}</div>
       <div className="date">{row ? formatScoreDate(row.created_at) : "PUESTO LIBRE"}</div>
     </div>
@@ -54,7 +55,7 @@ export default function HallOfFame({ games, initialScores, limit }: Props) {
 
     const { data, error } = await createClient()
       .from("scores")
-      .select("*")
+      .select("*, profiles(username, avatar)") // mismo select que getTopScores (SPEC 15)
       .eq("game_id", gameId)
       .order("score", { ascending: false })
       .order("created_at", { ascending: true })
@@ -149,7 +150,9 @@ export default function HallOfFame({ games, initialScores, limit }: Props) {
                         style={{ animationDelay: `${i * 50}ms` }}
                       >
                         <div className="rk">#{String(i + 1).padStart(2, "0")}</div>
-                        <div className="pl">{row.player_name}</div>
+                        <div className="pl">
+                          <PlayerLink row={row} />
+                        </div>
                         <div className="sc">{row.score.toLocaleString("es-ES")}</div>
                         <div className="dt">{formatScoreDate(row.created_at)}</div>
                       </div>

@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import LeaderboardEmpty from "@/components/leaderboard-empty";
+import PlayerLink from "@/components/player-link";
 import { formatScoreDate } from "@/lib/format";
 import { getGame } from "@/lib/supabase/games";
 import { countScores, getTopScores } from "@/lib/supabase/scores";
@@ -78,7 +79,7 @@ export default async function GameDetailPage({ params }: PageProps<"/juego/[id]"
             >
               <div className="rk">#{String(i + 1).padStart(2, "0")}</div>
               <div className="pl">
-                {row.player_name}
+                <PlayerLink row={row} />
                 <div className="date">{formatScoreDate(row.created_at)}</div>
               </div>
               <div className="sc">{row.score.toLocaleString("es-ES")}</div>

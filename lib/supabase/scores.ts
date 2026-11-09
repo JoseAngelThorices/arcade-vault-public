@@ -3,12 +3,15 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ScoreRow } from "@/lib/supabase/types";
 
+/** Columnas de una fila de ranking: la puntuación y el perfil del autor (SPEC 15). */
+const RANKING_SELECT = "*, profiles(username, avatar)";
+
 /** Las `limit` mejores puntuaciones de un juego, de mayor a menor. */
 export async function getTopScores(gameId: string, limit: number): Promise<ScoreRow[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("scores")
-    .select("*")
+    .select(RANKING_SELECT)
     .eq("game_id", gameId)
     .order("score", { ascending: false })
     .order("created_at", { ascending: true })

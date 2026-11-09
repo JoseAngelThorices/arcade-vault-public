@@ -6,6 +6,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import PlayerAvatar from "@/components/player-avatar";
 import { useSession } from "@/lib/session";
 
 /** La biblioteca sigue marcada mientras se navega por un juego concreto. */
@@ -15,7 +16,7 @@ function isLibrary(pathname: string) {
 
 export default function Nav() {
   const pathname = usePathname() || "";
-  const { user, username, ready, signOut } = useSession();
+  const { user, username, avatar, ready, signOut } = useSession();
   const [open, setOpen] = useState(false);
 
   const homeActive = pathname === "/inicio";
@@ -73,9 +74,7 @@ export default function Nav() {
         {signedIn ? (
           <div className="nav-user">
             <Link className="nav-user-id" href="/acceso" aria-label={`Tu cuenta: ${username}`}>
-              <span className="av-avatar" aria-hidden="true">
-                {username?.charAt(0)}
-              </span>
+              <PlayerAvatar avatar={avatar} name={username} />
               <span className="nav-user-name">{username}</span>
             </Link>
             <button className="btn ghost nav-signout" onClick={() => void signOut()}>
