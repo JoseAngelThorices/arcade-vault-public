@@ -13,9 +13,14 @@ import type { AuthError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import AvatarPicker from "@/components/avatar-picker";
+import PlayerAvatar from "@/components/player-avatar";
+import ProfileEditor from "@/components/profile-editor";
+import { DEFAULT_AVATAR, type AvatarId } from "@/lib/avatars";
 import { isStrongPassword, PASSWORD_RULES } from "@/lib/password";
-import { normalizeName, useSession } from "@/lib/session";
+import { useSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/client";
+import { isValidUsername, normalizeUsername, USERNAME_HINT } from "@/lib/username";
 
 const ALIAS_MAX = 10;
 
@@ -43,20 +48,27 @@ type Place = "in" | "up" | "reset";
 type FormError = { place: Place; text: string } | null;
 
 export default function AuthForm({ linkError = false }: { linkError?: boolean }) {
-  const { user, username, ready, signOut } = useSession();
+  const { user, username, avatar, ready, signOut } = useSession();
 
   if (ready && user) {
     return (
       <div className="auth-card">
         <div className="auth-account">
-          <div className="av-avatar lg" aria-hidden="true">
-            {username?.charAt(0)}
-          </div>
+          <PlayerAvatar avatar={avatar} name={username} size="lg" />
           <p className="auth-account-label">Sesión iniciada como</p>
           <h2>{username}</h2>
           {user.email && <p className="auth-account-email">{user.email}</p>}
         </div>
-        <Link className="btn lg auth-submit" href="/juegos">
+        {/* `avatar` solo llega con el perfil cargado: hasta entonces el alias es provisional. */}
+        {avatar && username && (
+          <>
+            <Link className="btn lg auth-submit" href={`/jugador/${username}`}>
+              VER MI PERFIL
+            </Link>
+            <ProfileEditor username={username} avatar={avatar} />
+          </>
+        )}
+        <Link className="btn ghost auth-secondary" href="/juegos">
           IR A LA BIBLIOTECA
         </Link>
         <button className="btn ghost auth-secondary" type="button" onClick={() => void signOut()}>
@@ -81,6 +93,7 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [alias, setAlias] = useState("");
+  const [avatar, setAvatar] = useState<AvatarId>(DEFAULT_AVATAR);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeat, setRepeat] = useState("");
@@ -125,17 +138,26 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
     e.preventDefault();
     const fail = (text: string) => setError({ place: "up", text });
     if (!alias.trim()) return fail("Elige un alias de jugador.");
+    if (!isValidUsername(alias)) return fail(`Alias no válido. ${USERNAME_HINT}`);
     if (!email.trim()) return fail("Escribe tu correo electrónico.");
     if (!isStrongPassword(password)) return fail(PASSWORD_RULES);
     if (password !== repeat) return fail("Las contraseñas no coinciden.");
     if (!terms) return fail("Acepta las normas del salón para crear la cuenta.");
 
     void run(async () => {
-      const { data, error } = await createClient().auth.signUp({
+      const supabase = createClient();
+      const username = normalizeUsername(alias);
+      // Comprobacion previa: el trigger de alta nunca falla y, si el alias
+      // estuviera ocupado, pondria PLAYER + 4 digitos sin avisar (SPEC 15).
+      const { data: free, error: checkError } = await supabase.rpc("username_available", { name: username });
+      if (checkError) return fail("No se pudo comprobar el alias. Vuelve a intentarlo.");
+      if (!free) return fail("Ese alias ya está en uso.");
+
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
-          data: { username: normalizeName(alias.trim()) },
+          data: { username, avatar },
           emailRedirectTo: callbackUrl("/juegos"),
         },
       });
@@ -304,12 +326,15 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
             id="av-alias"
             value={alias}
             maxLength={ALIAS_MAX}
-            onChange={(e) => setAlias(e.target.value)}
+            onChange={(e) => setAlias(e.target.value.toUpperCase())}
             placeholder="PX_KAI"
             autoComplete="username"
+            spellCheck={false}
           />
-          <p className="field-hint">Así aparecerás en el Salón de la Fama.</p>
+          <p className="field-hint">Así aparecerás en el Salón de la Fama. {USERNAME_HINT}</p>
         </div>
+
+        <AvatarPicker name="av-signup" value={avatar} onChange={setAvatar} disabled={busy} />
 
         <div className="field">
           <label htmlFor="av-email">Correo electrónico</label>
