@@ -9,6 +9,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FeatureIcon, FloatingSilhouettes, type FeatureIconKind } from "@/components/home-icons";
 import MiniCard from "@/components/mini-card";
+import { timeAgo } from "@/lib/format";
+import { getRecentActivity, getTopPlayersToday } from "@/lib/supabase/activity";
 import { getGames } from "@/lib/supabase/games";
 
 export const metadata: Metadata = {
@@ -21,8 +23,6 @@ type NeonColor = "cyan" | "magenta" | "yellow" | "green";
 
 type Feature = { icon: FeatureIconKind; title: string; desc: string; color: NeonColor };
 type Stat = { n: string; u: string; s: string };
-type Tick = { player: string; game: string; score: number; when: string; color: NeonColor };
-type TopRow = { rank: number; player: string; score: number };
 
 const FEATURES: Feature[] = [
   {
@@ -58,30 +58,46 @@ const statsFor = (gameCount: number): Stat[] => [
   { n: "GLOBAL", u: "RANKING", s: "COMPITE CON EL MUNDO" },
 ];
 
-// Actividad simulada: listas fijas, no hay backend detras.
-const TICKER: Tick[] = [
-  { player: "NEONFOX", game: "Caída", score: 184220, when: "hace 2 min", color: "magenta" },
-  { player: "PX_KAI", game: "Glotón", score: 96400, when: "hace 5 min", color: "yellow" },
-  { player: "Z3R0COOL", game: "Invasores", score: 54190, when: "hace 8 min", color: "green" },
-  { player: "VAULT_07", game: "Asteroides", score: 41200, when: "hace 12 min", color: "cyan" },
-  { player: "GLITCHA", game: "Bloque Buster", score: 28450, when: "hace 18 min", color: "cyan" },
-  { player: "ARKADYA", game: "Serpentina", score: 7820, when: "hace 24 min", color: "green" },
-  { player: "CYBER_LU", game: "Ranaria", score: 18900, when: "hace 31 min", color: "yellow" },
-];
+// Actividad real (Supabase): filas del ticker y del top del dia.
+const TICKER_SIZE = 7;
+const TOP_SIZE = 5;
 
-const TOP_TODAY: TopRow[] = [
-  { rank: 1, player: "NEONFOX", score: 312840 },
-  { rank: 2, player: "PX_KAI", score: 248110 },
-  { rank: 3, player: "M00NRYU", score: 196720 },
-  { rank: 4, player: "VAULT_07", score: 154300 },
-  { rank: 5, player: "GLITCHA", score: 138900 },
-];
+const NEON_COLORS: NeonColor[] = ["cyan", "magenta", "yellow", "green"];
+
+/** El color del juego en `games.color`, o cian si no es uno de los neones. */
+const neonOf = (color: string | undefined): NeonColor =>
+  NEON_COLORS.includes(color as NeonColor) ? (color as NeonColor) : "cyan";
+
+/** Alias con enlace al perfil si la fila tiene cuenta; si no, texto plano. */
+function PlayerName({
+  username,
+  fallback,
+  className,
+}: {
+  username: string | null | undefined;
+  fallback: string;
+  className: string;
+}) {
+  if (!username) return <span className={className}>{fallback}</span>;
+  return (
+    <Link className={className} href={`/jugador/${username}`}>
+      {username}
+    </Link>
+  );
+}
 
 /** Las tres primeras filas del top llevan color de podio. */
 const PODIUM = ["top1", "top2", "top3"];
 
 export default async function HomePage() {
-  const games = await getGames();
+  const [games, recent, topToday] = await Promise.all([
+    getGames(),
+    getRecentActivity(TICKER_SIZE),
+    getTopPlayersToday(TOP_SIZE),
+  ]);
+  // Hora de la peticion: los "hace N min" se calculan en el servidor.
+  const now = new Date().getTime();
+  const topMax = topToday[0]?.total || 1;
 
   return (
     <div className="home fade-in">
@@ -102,14 +118,6 @@ export default async function HomePage() {
             <br />
             Sin descargas. Sin costo. Solo diversión.
           </p>
-          <div className="home-ctas">
-            <Link className="btn xl pulse" href="/juegos">
-              ▶ EXPLORAR JUEGOS
-            </Link>
-            <Link className="btn xl magenta" href="/acceso">
-              ✦ CREAR CUENTA
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -147,11 +155,6 @@ export default async function HomePage() {
             <MiniCard key={game.id} game={game} />
           ))}
         </div>
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <Link className="btn lg" href="/juegos">
-            VER TODOS LOS JUEGOS →
-          </Link>
-        </div>
       </section>
 
       {/* ESTADÍSTICAS */}
@@ -180,14 +183,22 @@ export default async function HomePage() {
               <div className="ac-title pixel">▸ ÚLTIMAS PUNTUACIONES</div>
             </div>
             <div className="ticker">
-              {TICKER.map((row, i) => (
-                <div key={row.player} className="tick-row" style={{ animationDelay: `${i * 60}ms` }}>
-                  <span className={"tk-p neon-" + row.color}>{row.player}</span>
-                  <span className="tk-mid">▸ {row.game}</span>
-                  <span className="tk-s">+{row.score.toLocaleString("es-ES")}</span>
-                  <span className="tk-t">{row.when}</span>
-                </div>
-              ))}
+              {recent.length === 0 ? (
+                <p className="activity-empty">Todavía no hay partidas guardadas. ¡Estrena el marcador!</p>
+              ) : (
+                recent.map((row, i) => (
+                  <div key={row.id} className="tick-row" style={{ animationDelay: `${i * 60}ms` }}>
+                    <PlayerName
+                      className={"tk-p neon-" + neonOf(row.games?.color)}
+                      username={row.profiles?.username}
+                      fallback={row.player_name}
+                    />
+                    <span className="tk-mid">▸ {row.games?.title ?? "—"}</span>
+                    <span className="tk-s">+{row.score.toLocaleString("es-ES")}</span>
+                    <span className="tk-t">{timeAgo(row.created_at, now)}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -199,77 +210,23 @@ export default async function HomePage() {
               </Link>
             </div>
             <div className="top-list">
-              {TOP_TODAY.map((row, i) => (
-                <div key={row.player} className={["top-row", PODIUM[i]].filter(Boolean).join(" ")}>
-                  <span className="tp-rk">#{String(row.rank).padStart(2, "0")}</span>
-                  <span className="tp-bar">
-                    <span className="tp-fill" style={{ width: `${100 - i * 16}%` }} />
-                  </span>
-                  <span className="tp-p">{row.player}</span>
-                  <span className="tp-s">{row.score.toLocaleString("es-ES")}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 04 · PRECIOS */}
-      <section className="reveal home-section">
-        <div className="section-head">
-          <div className="kicker pixel neon-green">{"// 04"}</div>
-          <h2 className="section-title">PRECIOS</h2>
-          <div className="section-rule" />
-        </div>
-        <div className="pricing-grid">
-          <div className="price-card">
-            <div className="pc-label pixel">PLAN ÚNICO</div>
-            <div className="pc-name pixel">JUGADOR VAULT</div>
-            <div className="pc-amount">
-              <span className="pc-amount-n">0 €</span>
-              <span className="pc-amount-u">/ SIEMPRE</span>
-            </div>
-            <div className="pc-tag">SIN TRUCOS · SIN LETRA PEQUEÑA</div>
-            <ul className="pc-list">
-              <li>✔ Acceso a todos los juegos</li>
-              <li>✔ Ranking global y salón de la fama</li>
-              <li>✔ Sin anuncios entre partidas</li>
-              <li>✔ Guarda tus puntuaciones</li>
-              <li>✔ Nuevos juegos cada mes</li>
-              <li>✔ Funciona en cualquier navegador</li>
-            </ul>
-            <Link className="btn xl pulse" style={{ width: "100%" }} href="/acceso">
-              EMPEZAR GRATIS →
-            </Link>
-            <div className="pc-foot">No pedimos tarjeta. Nunca lo haremos.</div>
-            <div className="pc-stamp pixel">
-              FREE
-              <br />
-              PLAY
-            </div>
-          </div>
-
-          <div className="pricing-faq">
-            <div className="faq-item">
-              <div className="faq-q pixel">¿REALMENTE ES GRATIS?</div>
-              <div className="faq-a">
-                Sí. Arcade Vault es un proyecto sin fines de lucro hecho por amor a los clásicos. No
-                hay versión «premium» escondida.
-              </div>
-            </div>
-            <div className="faq-item">
-              <div className="faq-q pixel">¿NECESITO CREAR CUENTA?</div>
-              <div className="faq-a">
-                No. Puedes jugar como invitado. Si quieres guardar tu puntuación y aparecer en el
-                ranking, regístrate en 10 segundos.
-              </div>
-            </div>
-            <div className="faq-item">
-              <div className="faq-q pixel">¿CÓMO SOBREVIVEN SIN COBRAR?</div>
-              <div className="faq-a">
-                Es un proyecto comunitario. Si te gusta, compártelo. Esa es toda la moneda que
-                aceptamos.
-              </div>
+              {topToday.length === 0 ? (
+                <p className="activity-empty">Nadie ha puntuado hoy todavía. ¡Sé el primero!</p>
+              ) : (
+                topToday.map((row, i) => (
+                  <div
+                    key={row.user_id ?? `guest:${row.player_name}`}
+                    className={["top-row", PODIUM[i]].filter(Boolean).join(" ")}
+                  >
+                    <span className="tp-rk">#{String(i + 1).padStart(2, "0")}</span>
+                    <span className="tp-bar">
+                      <span className="tp-fill" style={{ width: `${Math.round((row.total / topMax) * 100)}%` }} />
+                    </span>
+                    <PlayerName className="tp-p" username={row.username} fallback={row.player_name} />
+                    <span className="tp-s">{row.total.toLocaleString("es-ES")}</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -278,10 +235,17 @@ export default async function HomePage() {
       {/* CIERRE */}
       <section className="reveal home-final">
         <h2 className="final-title pixel">¿LISTO PARA JUGAR?</h2>
-        <Link className="btn xl pulse final-cta" href="/juegos">
-          INSERTAR MONEDA →
-        </Link>
-        <div className="final-tag">Gratis. Sin registro obligatorio. Empieza en segundos.</div>
+        <div className="final-actions">
+          <Link className="btn xl pulse final-cta" href="/juegos">
+            JUGAR SIN REGISTRARTE →
+          </Link>
+          <Link className="btn xl magenta final-cta" href="/acceso?registro">
+            CREAR CUENTA
+          </Link>
+        </div>
+        <div className="final-tag">
+          Gratis. Juega como invitado o crea tu cuenta para guardar tus puntuaciones en el ranking.
+        </div>
       </section>
     </div>
   );

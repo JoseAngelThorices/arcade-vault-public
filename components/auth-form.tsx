@@ -47,7 +47,14 @@ type Notice = { title: string; text: string };
 type Place = "in" | "up" | "reset";
 type FormError = { place: Place; text: string } | null;
 
-export default function AuthForm({ linkError = false }: { linkError?: boolean }) {
+export default function AuthForm({
+  linkError = false,
+  startOnSignUp = false,
+}: {
+  linkError?: boolean;
+  /** Arranca en la pestaña CREAR CUENTA en lugar de ENTRAR. */
+  startOnSignUp?: boolean;
+}) {
   const { user, username, avatar, ready, signOut } = useSession();
 
   if (ready && user) {
@@ -78,10 +85,10 @@ export default function AuthForm({ linkError = false }: { linkError?: boolean })
     );
   }
 
-  return <SignedOutCard linkError={linkError} />;
+  return <SignedOutCard linkError={linkError} startOnSignUp={startOnSignUp} />;
 }
 
-function SignedOutCard({ linkError }: { linkError: boolean }) {
+function SignedOutCard({ linkError, startOnSignUp }: { linkError: boolean; startOnSignUp: boolean }) {
   const router = useRouter();
   const [view, setView] = useState<View>("forms");
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -259,8 +266,8 @@ function SignedOutCard({ linkError }: { linkError: boolean }) {
   return (
     <div className="auth-card">
       {/* Los radios van primero: el CSS los usa como interruptor de sus hermanos. */}
-      <input className="auth-switch" type="radio" name="av-tab" id="av-tab-in" defaultChecked />
-      <input className="auth-switch" type="radio" name="av-tab" id="av-tab-up" />
+      <input className="auth-switch" type="radio" name="av-tab" id="av-tab-in" defaultChecked={!startOnSignUp} />
+      <input className="auth-switch" type="radio" name="av-tab" id="av-tab-up" defaultChecked={startOnSignUp} />
 
       <div className="auth-header">
         <div className="mark" aria-hidden="true" />

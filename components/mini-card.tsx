@@ -2,15 +2,14 @@
 //
 // Es la tarjeta reducida del rail de la landing, distinta de GameCard: solo
 // portada, titulo y categoria, sin tilt 3D, descripcion, insignia ni boton.
-// El onClick del prototipo se convierte aqui en un Link, asi que no necesita
-// ser un componente cliente.
+// Es solo de muestra: no enlaza al juego (el prototipo navegaba al detalle con
+// onClick). Para jugar estan JUGAR SIN REGISTRARTE al final de la landing y la Biblioteca.
 
-import Link from "next/link";
 import type { GameRow } from "@/lib/supabase/types";
 
 export default function MiniCard({ game }: { game: GameRow }) {
   return (
-    <Link className="mini-card" href={`/juego/${game.id}`}>
+    <div className="mini-card">
       <div className="mini-cover">
         <div className={"cover-bg " + game.cover} aria-hidden="true" />
       </div>
@@ -18,6 +17,6 @@ export default function MiniCard({ game }: { game: GameRow }) {
         <div className="mini-title">{game.title}</div>
         <div className="mini-cat">{game.cat}</div>
       </div>
-    </Link>
+    </div>
   );
 }
