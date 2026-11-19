@@ -24,3 +24,6 @@ npm run lint     # ESLint flat config via the ESLint CLI
 npx tsc --noEmit # typecheck (no script alias exists)
 npx next typegen # regenerate route types after adding/renaming routes
 ```
+## License
+
+[MIT](LICENSE)
