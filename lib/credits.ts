@@ -10,6 +10,8 @@
 // Una cookie ausente, de otro dia o con firma invalida cuenta como 0 usados:
 // tocarla nunca da mas creditos de los del dia.
 
+// Falla el build si un componente cliente importa este modulo (CREDITS_SECRET).
+import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 export const DAILY_CREDITS = 10;

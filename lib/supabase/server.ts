@@ -4,6 +4,7 @@
 // next/headers (asíncrono en Next 16). Cada petición crea su propio cliente:
 // no se comparte entre peticiones.
 
+import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
