@@ -6,11 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "bots:crear": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bots/crear.mjs",
-    "bots:sembrar": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bots/sembrar.mjs",
-    "bots:jugar": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bots/jugar.mjs",
-    "bots:limpiar": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/bots/limpiar.mjs"
+    "lint": "eslint"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -27,7 +23,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.5",
-    "playwright": "1.64.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

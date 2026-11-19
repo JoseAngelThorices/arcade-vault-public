@@ -41,5 +41,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-# informes de los bots de prueba (scripts/bots)
-/bot-reports
