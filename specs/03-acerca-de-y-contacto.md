@@ -308,7 +308,7 @@ Cada paso deja el proyecto compilando y navegable.
 | --- | --- |
 | Sin JavaScript el formulario no envía nada, y el visitante puede no darse cuenta | El `<noscript>` del paso 8 lo dice explícitamente, y hay un criterio de aceptación que lo verifica. La pantalla completa sigue siendo visible sin JS. |
 | Con `onboarding@resend.dev` la autorespuesta al visitante falla siempre | Está previsto en el diseño: su fallo se registra y no cambia la respuesta. Desaparece solo al configurar un dominio verificado en `RESEND_FROM`. |
-| Con `onboarding@resend.dev`, `CONTACT_TO` debe ser exactamente la dirección de la cuenta de Resend o tampoco llega el correo al equipo | `.env.local` ya se entrega con `CONTACT_TO=tu-correo@ejemplo.com`, y el criterio de envío real se verifica en cuanto se ponga la clave. |
+| Con `onboarding@resend.dev`, `CONTACT_TO` debe ser exactamente la dirección de la cuenta de Resend o tampoco llega el correo al equipo | `.env.local` ya se entrega con `CONTACT_TO` (la dirección de la cuenta de Resend), y el criterio de envío real se verifica en cuanto se ponga la clave. |
 | La clave de API se filtra al cliente | Se lee solo dentro de `app/api/contact/route.ts`, sin prefijo `NEXT_PUBLIC_`, y hay un criterio con `grep` que lo comprueba. |
 | El límite por IP se evade detrás de un proxy que no manda `x-forwarded-for`, o se aplica de más si varios usuarios comparten IP | Asumido: es la mitigación barata. El respaldo `"desconocida"` agrupa a todos los que no traen cabecera, lo que es conservador. |
 | El `Map` del límite crece sin fin en un proceso de larga vida | Al comprobar cada IP se descartan sus marcas de tiempo caducadas, y la entrada se elimina cuando se queda vacía. |
